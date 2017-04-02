@@ -172,8 +172,8 @@ static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
         {
             int doff = tcp->doff * 4;
             char* data_ptr = ((char*) tcp + doff);
-            size_t tot_len = (size_t) htons(ip->tot_len) - (iphdr_len + doff);
-            size_t copy_len = tot_len < 255 ? tot_len : 255;
+            size_t data_len = (size_t) htons(ip->tot_len) - (iphdr_len + doff);
+            size_t copy_len = data_len < 255 ? data_len : 255;
 
             strncpy(data, data_ptr, copy_len);
             data[copy_len] = '\0';
