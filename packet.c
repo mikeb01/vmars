@@ -155,49 +155,71 @@ static int setup_socket(struct ring* ring, char* netdev)
     return fd;
 }
 
+static void prettify_fix_message(char* msg, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        if (msg[i] == '\1')
+        {
+            msg[i] = '|';
+        }
+    }
+}
+
 static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
 {
     struct ethhdr* eth = (struct ethhdr*) ((uint8_t*) ppd + ppd->tp_mac);
     struct iphdr* ip = (struct iphdr*) ((uint8_t*) eth + ETH_HLEN);
     char data[256];
 
-    if (eth->h_proto == htons(ETH_P_IP))
+    if (eth->h_proto != htons(ETH_P_IP))
     {
-        int iphdr_len = ip->ihl * 4;
-        struct tcphdr* tcp = (struct tcphdr*) ((uint8_t*) eth + ETH_HLEN + iphdr_len);
-        uint16_t src_port = ntohs(tcp->source);
-        uint16_t dst_port = ntohs(tcp->dest);
-
-        if (src_port == ctx->port | dst_port == ctx->port)
-        {
-            int doff = tcp->doff * 4;
-            char* data_ptr = ((char*) tcp + doff);
-            size_t data_len = (size_t) htons(ip->tot_len) - (iphdr_len + doff);
-            size_t copy_len = data_len < 255 ? data_len : 255;
-
-            strncpy(data, data_ptr, copy_len);
-            data[copy_len] = '\0';
-
-            struct sockaddr_in ss, sd;
-            char sbuff[NI_MAXHOST], dbuff[NI_MAXHOST];
-
-            memset(&ss, 0, sizeof(ss));
-            ss.sin_family = PF_INET;
-            ss.sin_addr.s_addr = ip->saddr;
-            getnameinfo((struct sockaddr*) &ss, sizeof(ss),
-                        sbuff, sizeof(sbuff), NULL, 0, NI_NUMERICHOST);
-
-            memset(&sd, 0, sizeof(sd));
-            sd.sin_family = PF_INET;
-            sd.sin_addr.s_addr = ip->daddr;
-            getnameinfo((struct sockaddr*) &sd, sizeof(sd),
-                        dbuff, sizeof(dbuff), NULL, 0, NI_NUMERICHOST);
-
-            printf(
-                "[%d] %s:%d -> %s:%d, rxhash: 0x%x, off: %d, tot_len: %d, data: %s\n",
-                ctx->thread_num, sbuff, src_port, dbuff, dst_port, ppd->hv1.tp_rxhash, ETH_HLEN + iphdr_len + doff, copy_len, data);
-        }
+        return;
     }
+
+    int iphdr_len = ip->ihl * 4;
+    struct tcphdr* tcp = (struct tcphdr*) ((uint8_t*) eth + ETH_HLEN + iphdr_len);
+    uint16_t src_port = ntohs(tcp->source);
+    uint16_t dst_port = ntohs(tcp->dest);
+
+    if (src_port != ctx->port & dst_port != ctx->port)
+    {
+        return;
+    }
+
+    int doff = tcp->doff * 4;
+    char* data_ptr = ((char*) tcp + doff);
+    size_t data_len = (size_t) htons(ip->tot_len) - (iphdr_len + doff);
+
+    if (data_len == 0)
+    {
+        return;
+    }
+
+    size_t copy_len = data_len < 255 ? data_len : 255;
+
+    strncpy(data, data_ptr, copy_len);
+    data[copy_len] = '\0';
+    prettify_fix_message(data, copy_len);
+
+    struct sockaddr_in ss, sd;
+    char sbuff[NI_MAXHOST], dbuff[NI_MAXHOST];
+
+    memset(&ss, 0, sizeof(ss));
+    ss.sin_family = PF_INET;
+    ss.sin_addr.s_addr = ip->saddr;
+    getnameinfo((struct sockaddr*) &ss, sizeof(ss),
+                sbuff, sizeof(sbuff), NULL, 0, NI_NUMERICHOST);
+
+    memset(&sd, 0, sizeof(sd));
+    sd.sin_family = PF_INET;
+    sd.sin_addr.s_addr = ip->daddr;
+    getnameinfo((struct sockaddr*) &sd, sizeof(sd),
+                dbuff, sizeof(dbuff), NULL, 0, NI_NUMERICHOST);
+
+    printf(
+        "[%d] %s:%d -> %s:%d, rxhash: 0x%x, data: %s\n",
+        ctx->thread_num, sbuff, src_port, dbuff, dst_port, ppd->hv1.tp_rxhash, data);
 }
 
 static void walk_block(capture_context* ctx, struct block_desc* pbd)
