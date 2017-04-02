@@ -22,11 +22,11 @@
 #include <unistd.h>
 #include <signal.h>
 #include <inttypes.h>
-#include <sys/socket.h>
 #include <sys/mman.h>
 #include <linux/if_packet.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
+#include <linux/tcp.h>
 #include <pthread.h>
 
 #ifndef likely
@@ -36,13 +36,6 @@
 # define unlikely(x)        __builtin_expect(!!(x), 0)
 #endif
 
-struct block_desc
-{
-    uint32_t version;
-    uint32_t offset_to_priv;
-    struct tpacket_hdr_v1 h1;
-};
-
 struct ring
 {
     struct iovec* rd;
@@ -51,21 +44,36 @@ struct ring
     int fanout_id;
 };
 
-struct context
+typedef struct
 {
     int thread_num;
     int fanout_id;
     char* interface;
-};
+    int port;
+} capture_context;
+
 
 static unsigned long packets_total = 0, bytes_total = 0;
 static sig_atomic_t sigint = 0;
 
+struct block_desc
+{
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+    uint32_t version;
+    uint32_t offset_to_priv;
+#pragma clang diagnostic pop
+    struct tpacket_hdr_v1 h1;
+};
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 static void sighandler(int num)
 {
     printf("Teminating\n");
     sigint = 1;
 }
+#pragma clang diagnostic pop
 
 static int setup_socket(struct ring* ring, char* netdev)
 {
@@ -147,38 +155,43 @@ static int setup_socket(struct ring* ring, char* netdev)
     return fd;
 }
 
-static void display(struct tpacket3_hdr* ppd, int i)
+static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
 {
     struct ethhdr* eth = (struct ethhdr*) ((uint8_t*) ppd + ppd->tp_mac);
     struct iphdr* ip = (struct iphdr*) ((uint8_t*) eth + ETH_HLEN);
 
     if (eth->h_proto == htons(ETH_P_IP))
     {
-        struct sockaddr_in ss, sd;
-        char sbuff[NI_MAXHOST], dbuff[NI_MAXHOST];
+        int iphdr_len = ip->ihl * 4;
+        struct tcphdr* tcp = (struct tcphdr*) ((uint8_t*) eth + ETH_HLEN + iphdr_len);
+        uint16_t src_port = ntohs(tcp->source);
+        uint16_t dst_port = ntohs(tcp->dest);
 
-        memset(&ss, 0, sizeof(ss));
-        ss.sin_family = PF_INET;
-        ss.sin_addr.s_addr = ip->saddr;
-        getnameinfo((struct sockaddr*) &ss, sizeof(ss),
-                    sbuff, sizeof(sbuff), NULL, 0, NI_NUMERICHOST);
+        if (src_port == ctx->port | dst_port == ctx->port)
+        {
+            struct sockaddr_in ss, sd;
+            char sbuff[NI_MAXHOST], dbuff[NI_MAXHOST];
 
-        memset(&sd, 0, sizeof(sd));
-        sd.sin_family = PF_INET;
-        sd.sin_addr.s_addr = ip->daddr;
-        getnameinfo((struct sockaddr*) &sd, sizeof(sd),
-                    dbuff, sizeof(dbuff), NULL, 0, NI_NUMERICHOST);
+            memset(&ss, 0, sizeof(ss));
+            ss.sin_family = PF_INET;
+            ss.sin_addr.s_addr = ip->saddr;
+            getnameinfo((struct sockaddr*) &ss, sizeof(ss),
+                        sbuff, sizeof(sbuff), NULL, 0, NI_NUMERICHOST);
 
-        printf("[%d] %s -> %s, rxhash: 0x%x\n", i, sbuff, dbuff, ppd->hv1.tp_rxhash);
+            memset(&sd, 0, sizeof(sd));
+            sd.sin_family = PF_INET;
+            sd.sin_addr.s_addr = ip->daddr;
+            getnameinfo((struct sockaddr*) &sd, sizeof(sd),
+                        dbuff, sizeof(dbuff), NULL, 0, NI_NUMERICHOST);
+
+            printf(
+                "[%d] %s:%d -> %s:%d, rxhash: 0x%x hdrlen: %d\n",
+                ctx->thread_num, sbuff, src_port, dbuff, dst_port, ppd->hv1.tp_rxhash, iphdr_len);
+        }
     }
-    else
-    {
-        printf("[%d] rxhash: 0x%x\n", i, ppd->hv1.tp_rxhash);
-    }
-
 }
 
-static void walk_block(struct block_desc* pbd, unsigned int block_num, int thread_num)
+static void walk_block(capture_context* ctx, struct block_desc* pbd)
 {
     int num_pkts = pbd->h1.num_pkts, i;
     unsigned long bytes = 0;
@@ -189,7 +202,7 @@ static void walk_block(struct block_desc* pbd, unsigned int block_num, int threa
     for (i = 0; i < num_pkts; ++i)
     {
         bytes += ppd->tp_snaplen;
-        display(ppd, thread_num);
+        display(ctx, ppd);
 
         ppd = (struct tpacket3_hdr*) ((uint8_t*) ppd + ppd->tp_next_offset);
     }
@@ -210,7 +223,7 @@ static void teardown_socket(struct ring* ring, int fd)
     close(fd);
 }
 
-void* poll_socket(void* thread_context)
+void* poll_socket(void* context)
 {
     int fd, err;
     socklen_t len;
@@ -219,7 +232,7 @@ void* poll_socket(void* thread_context)
     unsigned int block_num = 0, blocks = 64;
     struct block_desc* pbd;
     struct tpacket_stats_v3 stats;
-    struct context* ctx = (struct context*) thread_context;
+    capture_context* ctx = (capture_context*) context;
 
     ring.fanout_id = ctx->fanout_id;
     memset(&ring, 0, sizeof(ring));
@@ -245,13 +258,13 @@ void* poll_socket(void* thread_context)
             continue;
         }
 
-        walk_block(pbd, block_num, ctx->thread_num);
+        walk_block(ctx, pbd);
         flush_block(pbd);
         block_num = (block_num + 1) % blocks;
         total_blocks++;
     }
 
-    printf("[%d] total blocks: %"PRIi64"\n", ctx->thread_num, total_blocks);
+    printf("[%d] total blocks: %"PRId64"\n", ctx->thread_num, total_blocks);
 
     len = sizeof(stats);
     err = getsockopt(fd, SOL_PACKET, PACKET_STATISTICS, &stats, &len);
@@ -276,8 +289,9 @@ int main(int argc, char** argp)
     int opt;
     char* interface = NULL;
     int num_threads = 2;
+    int port = -1;
 
-    while ((opt = getopt(argc, argp, "i:t:")) != -1)
+    while ((opt = getopt(argc, argp, "i:t:p:")) != -1)
     {
         switch (opt)
         {
@@ -287,6 +301,9 @@ int main(int argc, char** argp)
             case 't':
                 num_threads = atoi(optarg);
                 break;
+            case 'p':
+                port = atoi(optarg);
+                break;
             default: /* '?' */
                 fprintf(stderr, "Usage: %s [-t nsecs] [-n] name\n", argp[0]);
                 exit(EXIT_FAILURE);
@@ -295,17 +312,22 @@ int main(int argc, char** argp)
 
     if (num_threads < 1)
     {
-        fprintf(stderr, "Number of threads (-n) must be positive");
+        fprintf(stderr, "Number of threads (-n) must be positive\n");
         exit(EXIT_FAILURE);
     }
     if (NULL == interface)
     {
-        fprintf(stderr, "Must specify and interface (-i)");
+        fprintf(stderr, "Must specify an interface (-i)\n");
+        exit(EXIT_FAILURE);
+    }
+    if (-1 == port)
+    {
+        fprintf(stderr, "Must specify a port (-p)\n");
         exit(EXIT_FAILURE);
     }
 
     pthread_t* polling_threads = calloc((size_t) num_threads, sizeof(pthread_t));
-    struct context* thread_contexts = calloc((size_t) num_threads, sizeof(struct context));
+    capture_context* thread_contexts = calloc((size_t) num_threads, sizeof(capture_context));
 
     signal(SIGINT, sighandler);
     int fanout_id = 1111;
@@ -315,6 +337,7 @@ int main(int argc, char** argp)
         thread_contexts[i].thread_num = i;
         thread_contexts[i].fanout_id = fanout_id;
         thread_contexts[i].interface = argp[1];
+        thread_contexts[i].port = port;
 
         pthread_create(&polling_threads[i], NULL, poll_socket, &thread_contexts[i]);
     }
