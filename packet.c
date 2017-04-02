@@ -159,6 +159,7 @@ static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
 {
     struct ethhdr* eth = (struct ethhdr*) ((uint8_t*) ppd + ppd->tp_mac);
     struct iphdr* ip = (struct iphdr*) ((uint8_t*) eth + ETH_HLEN);
+    char data[256];
 
     if (eth->h_proto == htons(ETH_P_IP))
     {
@@ -169,6 +170,14 @@ static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
 
         if (src_port == ctx->port | dst_port == ctx->port)
         {
+            int doff = tcp->doff * 4;
+            char* data_ptr = ((char*) tcp + doff);
+            size_t tot_len = (size_t) htons(ip->tot_len) - (iphdr_len + doff);
+            size_t copy_len = tot_len < 255 ? tot_len : 255;
+
+            strncpy(data, data_ptr, copy_len);
+            data[copy_len] = '\0';
+
             struct sockaddr_in ss, sd;
             char sbuff[NI_MAXHOST], dbuff[NI_MAXHOST];
 
@@ -185,8 +194,8 @@ static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
                         dbuff, sizeof(dbuff), NULL, 0, NI_NUMERICHOST);
 
             printf(
-                "[%d] %s:%d -> %s:%d, rxhash: 0x%x hdrlen: %d\n",
-                ctx->thread_num, sbuff, src_port, dbuff, dst_port, ppd->hv1.tp_rxhash, iphdr_len);
+                "[%d] %s:%d -> %s:%d, rxhash: 0x%x, off: %d, tot_len: %d, data: %s\n",
+                ctx->thread_num, sbuff, src_port, dbuff, dst_port, ppd->hv1.tp_rxhash, ETH_HLEN + iphdr_len + doff, copy_len, data);
         }
     }
 }
