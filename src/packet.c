@@ -31,6 +31,9 @@
 #include <linux/sockios.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
+#include "simpleboyermoore.h"
+#include "fixparser.h"
+#include "packet.h"
 
 #ifndef likely
 # define likely(x)        __builtin_expect(!!(x), 1)
@@ -49,11 +52,12 @@ struct ring
 
 typedef struct
 {
-    int thread_num;
-    int fanout_id;
-    char* interface;
-    int port;
-} capture_context;
+    const char* sender_comp_id;
+    size_t sender_comp_id_len;
+    char message_type;
+    const char* cl_ord_id;
+    int cl_ord_id_len;
+} fix_details_t;
 
 
 static unsigned long packets_total = 0, bytes_total = 0;
@@ -71,7 +75,7 @@ struct block_desc
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
-static void sighandler(int num)
+void sighandler(int num)
 {
     printf("Teminating\n");
     sigint = 1;
@@ -186,6 +190,87 @@ static void prettify_fix_message(char* msg, size_t len)
     }
 }
 
+static void handle_tag(void* context, int fix_tag, const char* fix_value, int len)
+{
+    fix_details_t* fix_details = (fix_details_t*) context;
+
+    switch (fix_tag)
+    {
+        case FIX_MSG_TYPE:
+            if (len > 0)
+            {
+                fix_details->message_type = fix_value[0];
+            }
+            break;
+
+        case FIX_CL_ORD_ID:
+            fix_details->cl_ord_id = fix_value;
+            fix_details->cl_ord_id_len = len;
+            break;
+
+        case FIX_QUOTE_ID:
+            fix_details->cl_ord_id = fix_value;
+            fix_details->cl_ord_id_len = len;
+            break;
+
+        default:
+            break;
+    }
+}
+
+void extract_fix_messages(const capture_context* ctx, const char* data_ptr, size_t data_len)
+{
+    fix_details_t fix_details;
+    memset(&fix_details, 0, sizeof(fix_details_t));
+
+    const char* next_fix_messsage = NULL;
+    const char* buf = data_ptr;
+    int buf_remaining = (int) data_len;
+
+    const char* curr_fix_messsage = boyermoore_search(ctx->matcher, buf, buf_remaining);
+    // data starts with messgage fragment
+    // NULL for curr_fix_message is okay here too.
+    if (curr_fix_messsage != buf)
+    {
+        // Append to existing buffer keyed by rxhash.
+    }
+
+    do
+    {
+        if (NULL != curr_fix_messsage)
+        {
+            if (buf_remaining > ctx->matcher->len)
+            {
+                next_fix_messsage = boyermoore_search(
+                    ctx->matcher, &curr_fix_messsage[ctx->matcher->len], buf_remaining - (int) ctx->matcher->len);
+            }
+
+            // And now for some pointer math.
+            int fix_message_len = NULL == next_fix_messsage ? (int) data_len : (int) (next_fix_messsage - curr_fix_messsage);
+            buf_remaining -= fix_message_len;
+
+            int result = parse_fix_message(curr_fix_messsage, fix_message_len, &fix_details, NULL, handle_tag, NULL);
+            switch (result)
+            {
+                case 0:
+                    // Happy
+                    // Send message into onto queue
+                    break;
+                case FIX_EMESSAGETOOSHORT:
+                    // Copy data to buffer keyed by rxhash.
+                    break;
+                default:
+                    // Drop message
+                    break;
+            }
+        }
+
+        curr_fix_messsage = next_fix_messsage;
+        next_fix_messsage = NULL;
+    }
+    while (NULL != curr_fix_messsage);
+}
+
 static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
 {
     struct ethhdr* eth = (struct ethhdr*) ((uint8_t*) ppd + ppd->tp_mac);
@@ -216,7 +301,7 @@ static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
         return;
     }
 
-
+    extract_fix_messages(ctx, data_ptr, data_len);
 
     size_t copy_len = data_len < 255 ? data_len : 255;
 
@@ -294,6 +379,8 @@ void print_stats(int fd)
            stats.tp_freeze_q_cnt);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-stack-address"
 void* poll_socket(void* context)
 {
     int fd;
@@ -301,11 +388,15 @@ void* poll_socket(void* context)
     struct pollfd pfd;
     unsigned int block_num = 0, blocks = 64;
     struct block_desc* pbd;
-
+    struct boyermoore_s matcher;
+    
     capture_context* ctx = (capture_context*) context;
+    
+    boyermoore_init("8=FIX.4.", &matcher);
     memset(&ring, 0, sizeof(ring));
 
     ring.fanout_id = ctx->fanout_id;
+    ctx->matcher = &matcher;
     fd = setup_socket(&ring, ctx->interface);
     if (fd < 0)
     {
@@ -342,69 +433,4 @@ void* poll_socket(void* context)
 
     pthread_exit(NULL);
 }
-
-int main(int argc, char** argp)
-{
-    int opt;
-    char* interface = NULL;
-    int num_threads = 2;
-    int port = -1;
-
-    while ((opt = getopt(argc, argp, "i:t:p:")) != -1)
-    {
-        switch (opt)
-        {
-            case 'i':
-                interface = optarg;
-                break;
-            case 't':
-                num_threads = atoi(optarg);
-                break;
-            case 'p':
-                port = atoi(optarg);
-                break;
-            default: /* '?' */
-                fprintf(stderr, "Usage: %s [-t nsecs] [-n] name\n", argp[0]);
-                exit(EXIT_FAILURE);
-        }
-    }
-
-    if (num_threads < 1)
-    {
-        fprintf(stderr, "Number of threads (-n) must be positive\n");
-        exit(EXIT_FAILURE);
-    }
-    if (NULL == interface)
-    {
-        fprintf(stderr, "Must specify an interface (-i)\n");
-        exit(EXIT_FAILURE);
-    }
-    if (-1 == port)
-    {
-        fprintf(stderr, "Must specify a port (-p)\n");
-        exit(EXIT_FAILURE);
-    }
-
-    pthread_t* polling_threads = calloc((size_t) num_threads, sizeof(pthread_t));
-    capture_context* thread_contexts = calloc((size_t) num_threads, sizeof(capture_context));
-
-    signal(SIGINT, sighandler);
-    int fanout_id = 1111;
-
-    for (int i = 0; i < num_threads; i++)
-    {
-        thread_contexts[i].thread_num = i;
-        thread_contexts[i].fanout_id = fanout_id;
-        thread_contexts[i].interface = argp[1];
-        thread_contexts[i].port = port;
-
-        pthread_create(&polling_threads[i], NULL, poll_socket, &thread_contexts[i]);
-    }
-
-    for (int i = 0; i < num_threads; i++)
-    {
-        pthread_join(polling_threads[i], NULL);
-    }
-
-    return 0;
-}
+#pragma clang diagnostic pop

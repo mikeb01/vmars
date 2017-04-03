@@ -19,13 +19,13 @@ void boyermoore_init(const char* pattern, struct boyermoore_s* matcher)
         matcher->bad_match[i] = matcher->len;
     }
 
-    for (int i = 0; i < matcher->len; i++)
+    for (int i = 0; i < matcher->len - 1; i++)
     {
         matcher->bad_match[pattern[i] & 0xFF] = matcher->len - i - 1;
     }
 }
 
-const char* boyermoore_search(struct boyermoore_s* needle, const char* haystack, size_t length)
+const char* boyermoore_search(struct boyermoore_s* needle, const char* haystack, int length)
 {
     if (length < needle->len)
     {

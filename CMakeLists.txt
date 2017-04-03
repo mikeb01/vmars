@@ -4,7 +4,15 @@ project(packet_mmap)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g")
 find_package(Threads)
 
-add_executable(packet src/packet.c)
+
+
+add_executable(
+    packet
+    src/main.c
+    src/packet.h src/packet.c
+    src/fixparser.h src/fixparser.c
+    src/simpleboyermoore.h)
+
 add_executable(directio src/directio.c)
 
 add_executable(simpleboyermoore_test src/simpleboyermoore.h test/simpleboyermoore_test.c)
