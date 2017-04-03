@@ -27,7 +27,10 @@
 #include <linux/if_ether.h>
 #include <linux/ip.h>
 #include <linux/tcp.h>
+#include <linux/net_tstamp.h>
+#include <linux/sockios.h>
 #include <pthread.h>
+#include <sys/ioctl.h>
 
 #ifndef likely
 # define likely(x)        __builtin_expect(!!(x), 1)
@@ -79,6 +82,8 @@ static int setup_socket(struct ring* ring, char* netdev)
 {
     int err, i, fd, v = TPACKET_V3;
     struct sockaddr_ll ll;
+    struct ifreq hwtstamp;
+    struct hwtstamp_config hwconfig;
     unsigned int blocksiz = 1 << 22, framesiz = 1 << 11;
     unsigned int blocknum = 64;
 
@@ -139,17 +144,32 @@ static int setup_socket(struct ring* ring, char* netdev)
     err = bind(fd, (struct sockaddr*) &ll, sizeof(ll));
     if (err < 0)
     {
-        perror("bind");
+        perror("Failed to bind to socket");
         return -1;
     }
-
-    printf("fanout_id = %d\n", ring->fanout_id);
 
     err = setsockopt(fd, SOL_PACKET, PACKET_FANOUT, &ring->fanout_id, sizeof(ring->fanout_id));
     if (err)
     {
-        perror("setsockopt");
+        perror("Failed to set fanout option for socket");
         return -1;
+    }
+
+    memset(&hwtstamp, 0, sizeof(struct ifreq));
+    memset(&hwconfig, 0, sizeof(struct hwtstamp_config));
+
+    strncpy(hwtstamp.ifr_name, netdev, sizeof(hwtstamp.ifr_name));
+    hwtstamp.ifr_data = (void *)&hwconfig;
+    hwconfig.rx_filter = HWTSTAMP_FILTER_ALL;
+
+    if (ioctl (fd, SIOCSHWTSTAMP, &hwtstamp) < 0)
+    {
+        perror("SIOCGHWTSTAMP failed - not using HW timestamps");
+    }
+    else
+    {
+        int req = SOF_TIMESTAMPING_RAW_HARDWARE;
+        setsockopt(fd, SOL_PACKET, PACKET_TIMESTAMP, (void *) &req, sizeof(req));
     }
 
     return fd;
@@ -218,8 +238,9 @@ static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
                 dbuff, sizeof(dbuff), NULL, 0, NI_NUMERICHOST);
 
     printf(
-        "[%d] %s:%d -> %s:%d, rxhash: 0x%x, data: %s\n",
-        ctx->thread_num, sbuff, src_port, dbuff, dst_port, ppd->hv1.tp_rxhash, data);
+        "[%d] %s:%d -> %s:%d, rxhash: 0x%x, %d:%09d, data: %s\n",
+        ctx->thread_num, sbuff, src_port, dbuff, dst_port, ppd->hv1.tp_rxhash,
+        ppd->tp_sec, ppd->tp_nsec, data);
 }
 
 static void walk_block(capture_context* ctx, struct block_desc* pbd)
