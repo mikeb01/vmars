@@ -216,6 +216,8 @@ static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
         return;
     }
 
+
+
     size_t copy_len = data_len < 255 ? data_len : 255;
 
     strncpy(data, data_ptr, copy_len);
@@ -275,15 +277,31 @@ static void teardown_socket(struct ring* ring, int fd)
     close(fd);
 }
 
+void print_stats(int fd)
+{
+    struct tpacket_stats_v3 stats;
+    socklen_t len = sizeof(stats);
+    int err = getsockopt(fd, SOL_PACKET, PACKET_STATISTICS, &stats, &len);
+    if (err < 0)
+    {
+        perror("getsockopt");
+        pthread_exit(NULL);
+    }
+
+    fflush(stdout);
+    printf("\nReceived %u packets, %lu bytes, %u dropped, freeze_q_cnt: %u\n",
+           stats.tp_packets, bytes_total, stats.tp_drops,
+           stats.tp_freeze_q_cnt);
+}
+
 void* poll_socket(void* context)
 {
-    int fd, err;
-    socklen_t len;
+    int fd;
     struct ring ring;
     struct pollfd pfd;
     unsigned int block_num = 0, blocks = 64;
     struct block_desc* pbd;
-    struct tpacket_stats_v3 stats;
+
     capture_context* ctx = (capture_context*) context;
     memset(&ring, 0, sizeof(ring));
 
@@ -318,18 +336,7 @@ void* poll_socket(void* context)
 
     printf("[%d] total blocks: %"PRId64"\n", ctx->thread_num, total_blocks);
 
-    len = sizeof(stats);
-    err = getsockopt(fd, SOL_PACKET, PACKET_STATISTICS, &stats, &len);
-    if (err < 0)
-    {
-        perror("getsockopt");
-        pthread_exit(NULL);
-    }
-
-    fflush(stdout);
-    printf("\nReceived %u packets, %lu bytes, %u dropped, freeze_q_cnt: %u\n",
-           stats.tp_packets, bytes_total, stats.tp_drops,
-           stats.tp_freeze_q_cnt);
+    print_stats(fd);
 
     teardown_socket(&ring, fd);
 
