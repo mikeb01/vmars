@@ -264,9 +264,9 @@ void* poll_socket(void* context)
     struct block_desc* pbd;
     struct tpacket_stats_v3 stats;
     capture_context* ctx = (capture_context*) context;
+    memset(&ring, 0, sizeof(ring));
 
     ring.fanout_id = ctx->fanout_id;
-    memset(&ring, 0, sizeof(ring));
     fd = setup_socket(&ring, ctx->interface);
     if (fd < 0)
     {
