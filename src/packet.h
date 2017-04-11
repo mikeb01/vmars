@@ -12,11 +12,20 @@ typedef struct
     char* interface;
     int port;
     struct boyermoore_s* matcher;
-} capture_context;
+} capture_context_t;
+
+typedef struct
+{
+    int64_t tv_sec;
+    int64_t tv_nsec;
+    char msg_type;
+    int32_t key_len;
+    char key[0];
+} fix_message_summary_t;
 
 void sighandler(int num);
 
-void extract_fix_messages(const capture_context* ctx, const char* data_ptr, size_t data_len);
+void extract_fix_messages(const capture_context_t* ctx, const char* data_ptr, size_t data_len);
 
 void* poll_socket(void* context);
 

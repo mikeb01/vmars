@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <stdint.h>
 #include <signal.h>
 #include <pthread.h>
+#include <getopt.h>
 #include "packet.h"
 
 int main(int argc, char** argp)
@@ -48,7 +49,7 @@ int main(int argc, char** argp)
     }
 
     pthread_t* polling_threads = calloc((size_t) num_threads, sizeof(pthread_t));
-    capture_context* thread_contexts = calloc((size_t) num_threads, sizeof(capture_context));
+    capture_context_t* thread_contexts = calloc((size_t) num_threads, sizeof(capture_context_t));
 
     signal(SIGINT, sighandler);
     int fanout_id = 1111;

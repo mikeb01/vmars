@@ -10,6 +10,8 @@
 
 // https://www.kernel.org/doc/Documentation/networking/packet_mmap.txt
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -17,7 +19,6 @@
 #include <assert.h>
 #include <net/if.h>
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <poll.h>
 #include <unistd.h>
 #include <signal.h>
@@ -31,6 +32,7 @@
 #include <linux/sockios.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
+#include <netdb.h>
 #include "simpleboyermoore.h"
 #include "fixparser.h"
 #include "packet.h"
@@ -218,7 +220,7 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
     }
 }
 
-void extract_fix_messages(const capture_context* ctx, const char* data_ptr, size_t data_len)
+void extract_fix_messages(const capture_context_t* ctx, const char* data_ptr, size_t data_len)
 {
     fix_details_t fix_details;
     memset(&fix_details, 0, sizeof(fix_details_t));
@@ -271,7 +273,7 @@ void extract_fix_messages(const capture_context* ctx, const char* data_ptr, size
     while (NULL != curr_fix_messsage);
 }
 
-static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
+static void display(capture_context_t* ctx, struct tpacket3_hdr* ppd)
 {
     struct ethhdr* eth = (struct ethhdr*) ((uint8_t*) ppd + ppd->tp_mac);
     struct iphdr* ip = (struct iphdr*) ((uint8_t*) eth + ETH_HLEN);
@@ -330,7 +332,7 @@ static void display(capture_context* ctx, struct tpacket3_hdr* ppd)
         ppd->tp_sec, ppd->tp_nsec, data);
 }
 
-static void walk_block(capture_context* ctx, struct block_desc* pbd)
+static void walk_block(capture_context_t* ctx, struct block_desc* pbd)
 {
     int num_pkts = pbd->h1.num_pkts, i;
     unsigned long bytes = 0;
@@ -390,7 +392,7 @@ void* poll_socket(void* context)
     struct block_desc* pbd;
     struct boyermoore_s matcher;
     
-    capture_context* ctx = (capture_context*) context;
+    capture_context_t* ctx = (capture_context_t*) context;
     
     boyermoore_init("8=FIX.4.", &matcher);
     memset(&ring, 0, sizeof(ring));
