@@ -33,6 +33,7 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <netdb.h>
+#include <stdbool.h>
 
 #include "simpleboyermoore.h"
 #include "fixparser.h"
@@ -57,6 +58,7 @@ struct ring
 typedef struct
 {
     char message_type;
+    char ord_status;
     const char* sender_comp_id;
     int sender_comp_id_len;
     const char* cl_ord_id;
@@ -241,10 +243,96 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
     }
 }
 
+void process_for_latency_measurement(const capture_context_t* ctx, fix_details_t* fix_details)
+{
+    bool should_process = false;
+    const char* remote_id = NULL;
+    int remote_id_len = 0;
+    const char* local_id = NULL;
+    int local_id_len = 0;
+    const char* instrument = NULL;
+    int instrument_len = 0;
+    const char* instruction = NULL;
+    int instruction_len = 0;
+
+    switch (fix_details->message_type)
+    {
+        case 'D':
+        {
+            should_process = true;
+
+            remote_id = fix_details->sender_comp_id;
+            remote_id_len = fix_details->sender_comp_id_len;
+            local_id = fix_details->target_comp_id;
+            local_id_len = fix_details->target_comp_id_len;
+            instrument = fix_details->symbol;
+            instrument_len = fix_details->symbol_len;
+            instruction = fix_details->cl_ord_id;
+            instruction_len = fix_details->cl_ord_id_len;
+
+            break;
+        }
+
+        default:
+            break;
+    }
+
+    if (!should_process)
+    {
+        return;
+    }
+
+    const size_t summary_header_len = sizeof(fix_message_summary_t);
+    const int key_len = remote_id_len + 1 + local_id_len + 1 + instruction_len + 1 + instrument_len;
+
+    rb_record_t* record = spsc_rb_claim(ctx->rb, summary_header_len + key_len);
+
+    if (NULL != record)
+    {
+        fix_message_summary_t* summary = (fix_message_summary_t*) record->data;
+
+        summary->tv_sec = 1;
+        summary->tv_nsec = 2;
+        summary->msg_type = (*fix_details).message_type;
+        summary->key_len = key_len;
+
+        int offset = 0;
+        int len = remote_id_len;
+
+        strncpy(&summary->key[offset], remote_id, (size_t) len);
+        offset += len;
+
+        summary->key[offset] = '|';
+        offset += 1;
+
+        len = local_id_len;
+        strncpy(&summary->key[offset], local_id, (size_t) len);
+        offset += len;
+
+        summary->key[offset] = '|';
+        offset += 1;
+
+        len = instruction_len;
+        strncpy(&summary->key[offset], instruction, (size_t) len);
+        offset += len;
+
+        summary->key[offset] = '|';
+        offset += 1;
+
+        len = instrument_len;
+        strncpy(&summary->key[offset], instrument, (size_t) len);
+
+        spsc_rb_publish(ctx->rb, record);
+    }
+    else
+    {
+        // TODO: increment counter.
+    }
+}
+
 void extract_fix_messages(const capture_context_t* ctx, const char* data_ptr, size_t data_len)
 {
     fix_details_t fix_details;
-    memset(&fix_details, 0, sizeof(fix_details_t));
 
     const char* next_fix_messsage = NULL;
     const char* buf = data_ptr;
@@ -272,49 +360,12 @@ void extract_fix_messages(const capture_context_t* ctx, const char* data_ptr, si
             int fix_message_len = NULL == next_fix_messsage ? (int) data_len : (int) (next_fix_messsage - curr_fix_messsage);
             buf_remaining -= fix_message_len;
 
+            memset(&fix_details, 0, sizeof(fix_details_t));
             int result = parse_fix_message(curr_fix_messsage, fix_message_len, &fix_details, NULL, handle_tag, NULL);
 
             if (result > 0)
             {
-                switch (fix_details.message_type)
-                {
-                    case 'D':
-                    {
-                        const size_t summary_header_len = sizeof(fix_message_summary_t);
-                        const int key_len =
-                            fix_details.sender_comp_id_len + 1
-                            + fix_details.target_comp_id_len + 1
-                            + fix_details.cl_ord_id_len + 1
-                            + fix_details.symbol_len;
-
-                        rb_record_t* record = spsc_rb_claim(ctx->rb, summary_header_len + key_len);
-
-                        if (NULL != record)
-                        {
-                            fix_message_summary_t* summary = (fix_message_summary_t*) record->data;
-
-                            summary->tv_sec = 1;
-                            summary->tv_nsec = 2;
-                            summary->msg_type = fix_details.message_type;
-                            summary->key_len = key_len;
-
-                            spsc_rb_publish(ctx->rb, record);
-                        }
-                        else
-                        {
-                            // TODO: increment counter.
-                        }
-
-                        break;
-                    }
-
-                    default:
-                        break;
-                }
-
-                printf("Fix details: %c\n", fix_details.message_type);
-                // Happy
-                // Send message into onto queue
+                process_for_latency_measurement(ctx, &fix_details);
             }
             else if (result == FIX_EMESSAGETOOSHORT)
             {
