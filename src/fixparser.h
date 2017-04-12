@@ -3,6 +3,7 @@
 
 #define FIX_CL_ORD_ID 11
 #define FIX_MSG_TYPE 35
+#define FIX_SECURITY_ID 48
 #define FIX_SENDER_COMP_ID 49
 #define FIX_SYMBOL 55
 #define FIX_TARGET_COMP_ID 56

@@ -67,6 +67,8 @@ typedef struct
     int target_comp_id_len;
     const char* symbol;
     int symbol_len;
+    const char* security_id;
+    int security_id_len;
 } fix_details_t;
 
 
@@ -238,6 +240,10 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
             fix_details->symbol_len = len;
             break;
 
+        case FIX_SECURITY_ID:
+            fix_details->security_id = fix_value;
+            fix_details->security_id_len = len;
+
         default:
             break;
     }
@@ -265,8 +271,6 @@ void process_for_latency_measurement(const capture_context_t* ctx, fix_details_t
             remote_id_len = fix_details->sender_comp_id_len;
             local_id = fix_details->target_comp_id;
             local_id_len = fix_details->target_comp_id_len;
-            instrument = fix_details->symbol;
-            instrument_len = fix_details->symbol_len;
             instruction = fix_details->cl_ord_id;
             instruction_len = fix_details->cl_ord_id_len;
 
@@ -280,6 +284,17 @@ void process_for_latency_measurement(const capture_context_t* ctx, fix_details_t
     if (!should_process)
     {
         return;
+    }
+
+    if (fix_details->symbol_len != 0)
+    {
+        instrument = fix_details->symbol;
+        instrument_len = fix_details->symbol_len;
+    }
+    else if (fix_details->security_id_len != 0)
+    {
+        instrument = fix_details->security_id;
+        instrument_len = fix_details->security_id_len;
     }
 
     const size_t summary_header_len = sizeof(fix_message_summary_t);

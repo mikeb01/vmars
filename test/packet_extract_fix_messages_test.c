@@ -42,6 +42,8 @@ static void verify_single_message(capture_context_t* ptr, const char* fix_messag
     assert(summary->key_len == strlen(key));
     assert(strncmp(summary->key, key, strlen(key)) == 0);
 
+    spsc_rb_release(ptr->rb, msg);
+
     free(buf);
 }
 
@@ -51,6 +53,11 @@ static void parse_simple_message(capture_context_t* ptr)
         ptr,
         "8=FIX.4.2|9=130|35=D|34=659|49=BROKER04|56=REUTERS|52=20070123-19:09:43|38=1000|59=1|100=N|40=1|11=ORD10001|60=20070123-19:01:17|55=HPQ|54=1|21=2|10=004|",
         'D', "BROKER04|REUTERS|ORD10001|HPQ");
+
+    verify_single_message(
+        ptr,
+        "8=FIX.4.2|9=131|35=D|34=659|49=BROKER04|56=REUTERS|52=20070123-19:09:43|38=1000|59=1|100=N|40=1|11=ORD10001|60=20070123-19:01:17|48=4001|54=1|21=2|10=227|",
+        'D', "BROKER04|REUTERS|ORD10001|4001");
 }
 
 int main()
