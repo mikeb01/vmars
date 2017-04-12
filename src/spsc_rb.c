@@ -97,7 +97,7 @@ int spsc_rb_init(spsc_rb_t* rb, size_t capacity)
     rb->buffer = map_buffer(capacity);
     rb->capacity = capacity;
     rb->max_message_length = 256;
-    rb->descriptor = malloc(sizeof(rb_descriptor_t));
+    rb->descriptor = calloc(1, sizeof(rb_descriptor_t));
 
     if (rb->buffer == NULL || rb->descriptor == NULL)
     {
