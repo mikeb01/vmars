@@ -40,7 +40,6 @@ typedef struct
     uint8_t* buffer;
     rb_descriptor_t* descriptor;
     size_t capacity;
-    size_t max_message_length;
 } spsc_rb_t;
 
 

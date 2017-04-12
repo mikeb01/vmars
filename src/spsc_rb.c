@@ -96,7 +96,6 @@ int spsc_rb_init(spsc_rb_t* rb, size_t capacity)
 
     rb->buffer = map_buffer(capacity);
     rb->capacity = capacity;
-    rb->max_message_length = 256;
     rb->descriptor = calloc(1, sizeof(rb_descriptor_t));
 
     if (rb->buffer == NULL || rb->descriptor == NULL)
@@ -122,7 +121,7 @@ rb_record_t* spsc_rb_claim(spsc_rb_t* rb, size_t length)
     const size_t to_buffer_end_length = rb->capacity - tail_index;
     rb_record_t *record = NULL;
 
-    if (length > rb->max_message_length)
+    if (length > rb->capacity)
     {
         errno = EINVAL;
         return NULL;
@@ -157,7 +156,8 @@ int spsc_rb_publish(spsc_rb_t* rb, rb_record_t* to_publish)
         return EINVAL;
     }
 
-    __atomic_store_n(&rb->descriptor->tail_position, to_publish->length + sizeof(rb_record_t), __ATOMIC_SEQ_CST);
+    int64_t new_tail = tail + to_publish->length + sizeof(rb_record_t);
+    __atomic_store_n(&rb->descriptor->tail_position, new_tail, __ATOMIC_SEQ_CST);
 
     return 0;
 }
