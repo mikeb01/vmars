@@ -33,9 +33,11 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <netdb.h>
+
 #include "simpleboyermoore.h"
 #include "fixparser.h"
 #include "packet.h"
+#include "spsc_rb.h"
 
 #ifndef likely
 # define likely(x)        __builtin_expect(!!(x), 1)
@@ -79,7 +81,7 @@ struct block_desc
 #pragma clang diagnostic ignored "-Wunused-parameter"
 void sighandler(int num)
 {
-    printf("Teminating\n");
+    printf("Terminating\n");
     sigint = 1;
 }
 #pragma clang diagnostic pop

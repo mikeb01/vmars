@@ -4,7 +4,9 @@
 #include <signal.h>
 #include <pthread.h>
 #include <getopt.h>
+
 #include "packet.h"
+#include "spsc_rb.h"
 
 int main(int argc, char** argp)
 {
@@ -56,10 +58,18 @@ int main(int argc, char** argp)
 
     for (int i = 0; i < num_threads; i++)
     {
+
         thread_contexts[i].thread_num = i;
         thread_contexts[i].fanout_id = fanout_id;
         thread_contexts[i].interface = argp[1];
         thread_contexts[i].port = port;
+        thread_contexts[i].rb = (spsc_rb_t*) calloc(1, sizeof(spsc_rb_t));
+
+        if (thread_contexts[i].rb == NULL && spsc_rb_init(thread_contexts[i].rb, 4096) < 0)
+        {
+            fprintf(stderr, "Failed to allocate ring buffer.\n");
+            exit(EXIT_FAILURE);
+        }
 
         pthread_create(&polling_threads[i], NULL, poll_socket, &thread_contexts[i]);
     }

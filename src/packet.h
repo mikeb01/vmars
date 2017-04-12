@@ -5,6 +5,8 @@
 #ifndef PACKET_MMAP_PACKET_H
 #define PACKET_MMAP_PACKET_H
 
+#include "spsc_rb.h"
+
 typedef struct
 {
     int thread_num;
@@ -12,6 +14,7 @@ typedef struct
     char* interface;
     int port;
     struct boyermoore_s* matcher;
+    spsc_rb_t* rb;
 } capture_context_t;
 
 typedef struct
