@@ -51,4 +51,6 @@ int spsc_rb_publish(spsc_rb_t* rb, rb_record_t* to_publish);
 
 const rb_record_t* spsc_rb_poll(spsc_rb_t* rb);
 
+int spsc_rb_release(spsc_rb_t* rb, const rb_record_t* to_release);
+
 #endif //PACKET_MMAP_SPSC_H

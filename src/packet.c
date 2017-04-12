@@ -56,11 +56,15 @@ struct ring
 
 typedef struct
 {
-    const char* sender_comp_id;
-    size_t sender_comp_id_len;
     char message_type;
+    const char* sender_comp_id;
+    int sender_comp_id_len;
     const char* cl_ord_id;
     int cl_ord_id_len;
+    const char* target_comp_id;
+    int target_comp_id_len;
+    const char* symbol;
+    int symbol_len;
 } fix_details_t;
 
 
@@ -217,6 +221,21 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
             fix_details->cl_ord_id_len = len;
             break;
 
+        case FIX_SENDER_COMP_ID:
+            fix_details->sender_comp_id = fix_value;
+            fix_details->sender_comp_id_len = len;
+            break;
+
+        case FIX_TARGET_COMP_ID:
+            fix_details->target_comp_id = fix_value;
+            fix_details->target_comp_id_len = len;
+            break;
+
+        case FIX_SYMBOL:
+            fix_details->symbol = fix_value;
+            fix_details->symbol_len = len;
+            break;
+
         default:
             break;
     }
@@ -254,18 +273,56 @@ void extract_fix_messages(const capture_context_t* ctx, const char* data_ptr, si
             buf_remaining -= fix_message_len;
 
             int result = parse_fix_message(curr_fix_messsage, fix_message_len, &fix_details, NULL, handle_tag, NULL);
-            switch (result)
+
+            if (result > 0)
             {
-                case 0:
-                    // Happy
-                    // Send message into onto queue
-                    break;
-                case FIX_EMESSAGETOOSHORT:
-                    // Copy data to buffer keyed by rxhash.
-                    break;
-                default:
-                    // Drop message
-                    break;
+                switch (fix_details.message_type)
+                {
+                    case 'D':
+                    {
+                        const size_t summary_header_len = sizeof(fix_message_summary_t);
+                        const int key_len =
+                            fix_details.sender_comp_id_len + 1
+                            + fix_details.target_comp_id_len + 1
+                            + fix_details.cl_ord_id_len + 1
+                            + fix_details.symbol_len;
+
+                        rb_record_t* record = spsc_rb_claim(ctx->rb, summary_header_len + key_len);
+
+                        if (NULL != record)
+                        {
+                            fix_message_summary_t* summary = (fix_message_summary_t*) record->data;
+
+                            summary->tv_sec = 1;
+                            summary->tv_nsec = 2;
+                            summary->msg_type = fix_details.message_type;
+                            summary->key_len = key_len;
+
+                            spsc_rb_publish(ctx->rb, record);
+                        }
+                        else
+                        {
+                            // TODO: increment counter.
+                        }
+
+                        break;
+                    }
+
+                    default:
+                        break;
+                }
+
+                printf("Fix details: %c\n", fix_details.message_type);
+                // Happy
+                // Send message into onto queue
+            }
+            else if (result == FIX_EMESSAGETOOSHORT)
+            {
+                // Copy data to buffer keyed by rxhash.
+            }
+            else
+            {
+                // Drop message
             }
         }
 

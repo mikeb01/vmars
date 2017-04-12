@@ -183,7 +183,22 @@ const rb_record_t* spsc_rb_poll(spsc_rb_t* rb)
 
     const rb_record_t* record = (rb_record_t*) (rb->buffer + head_index);
 
-    __atomic_store_n(&rb->descriptor->head_position, head + sizeof(rb_record_t) + record->length, __ATOMIC_SEQ_CST);
-
     return record;
+}
+
+int spsc_rb_release(spsc_rb_t* rb, const rb_record_t* to_release)
+{
+    const int64_t head = rb->descriptor->head_position;
+    const size_t head_index = (int32_t)head & (rb->capacity - 1);
+    
+    if (to_release != (rb_record_t*) (rb->buffer + head_index))
+    {
+        return EINVAL;
+    }
+
+    const size_t new_head = head + sizeof(rb_record_t) + to_release->length;
+
+    __atomic_store_n(&rb->descriptor->head_position, new_head, __ATOMIC_SEQ_CST);
+
+    return 0;
 }
