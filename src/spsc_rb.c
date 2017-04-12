@@ -169,11 +169,11 @@ const rb_record_t* spsc_rb_poll(spsc_rb_t* rb)
     
     int64_t tail = rb->descriptor->tail_cache_position;
 
-    if (0 < tail - head)
+    if (0 >= tail - head)
     {
         tail = __atomic_load_n(&rb->descriptor->tail_position, __ATOMIC_SEQ_CST);    
         
-        if (head >= tail)
+        if (0 >= tail - head)
         {
             return NULL;
         }
