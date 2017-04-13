@@ -6,6 +6,7 @@
 #include "simpleboyermoore.h"
 #include "spsc_rb.h"
 #include "packet.h"
+#include "fix.h"
 
 static char* fixify(const char* buf)
 {

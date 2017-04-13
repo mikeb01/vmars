@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
+enable_testing()
+
 project(packet_mmap)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -g")
@@ -8,13 +10,15 @@ set(SOURCE
     src/packet.c
     src/fixparser.c
     src/spsc_rb.c
-    src/simpleboyermoore.c)
+    src/simpleboyermoore.c
+    src/fix.c)
 
 set(HEADERS
     src/packet.h
     src/fixparser.h
     src/simpleboyermoore.h
-    src/spsc_rb.h)
+    src/spsc_rb.h
+    src/fix.h)
 
 add_executable(
     packet
@@ -40,3 +44,7 @@ add_executable(
 )
 target_include_directories(spsc_rb_test PRIVATE src)
 target_link_libraries(spsc_rb_test rt)
+
+add_test(packet_exctract_fix_messages packet_extract_fix_messages_test)
+add_test(spsc_rb spsc_rb_test)
+add_test(simpleboyermoore simpleboyermoore_test)
