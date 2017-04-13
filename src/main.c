@@ -5,8 +5,8 @@
 #include <pthread.h>
 #include <getopt.h>
 
-#include "packet.h"
 #include "spsc_rb.h"
+#include "packet.h"
 
 int main(int argc, char** argp)
 {

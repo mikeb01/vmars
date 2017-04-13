@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "simpleboyermoore.h"
+#include "spsc_rb.h"
 #include "packet.h"
 
 static char* fixify(const char* buf)

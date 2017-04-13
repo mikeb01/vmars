@@ -37,8 +37,8 @@
 
 #include "simpleboyermoore.h"
 #include "fixparser.h"
-#include "packet.h"
 #include "spsc_rb.h"
+#include "packet.h"
 
 #ifndef likely
 # define likely(x)        __builtin_expect(!!(x), 1)
