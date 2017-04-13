@@ -33,11 +33,11 @@ add_executable(simpleboyermoore_test src/simpleboyermoore.h src/simpleboyermoore
 target_include_directories(simpleboyermoore_test PRIVATE src)
 
 add_executable(
-    packet_extract_fix_messages_test
-    test/packet_extract_fix_messages_test.c
+    fix_extract_fix_messages_test
+    test/fix_extract_fix_messages_test.c
     ${SOURCE} ${HEADERS})
-target_include_directories(packet_extract_fix_messages_test PRIVATE src)
-target_link_libraries(packet_extract_fix_messages_test ${CMAKE_THREAD_LIBS_INIT} rt)
+target_include_directories(fix_extract_fix_messages_test PRIVATE src)
+target_link_libraries(fix_extract_fix_messages_test ${CMAKE_THREAD_LIBS_INIT} rt)
 
 add_executable(
     spsc_rb_test src/spsc_rb.h src/spsc_rb.c test/spsc_rb_test.c
@@ -45,6 +45,6 @@ add_executable(
 target_include_directories(spsc_rb_test PRIVATE src)
 target_link_libraries(spsc_rb_test rt)
 
-add_test(packet_exctract_fix_messages packet_extract_fix_messages_test)
+add_test(fix_exctract_fix_messages fix_extract_fix_messages_test)
 add_test(spsc_rb spsc_rb_test)
 add_test(simpleboyermoore simpleboyermoore_test)
