@@ -16,6 +16,18 @@
 #define FIX_ETAGINVALID -3
 #define FIX_EEMPTYVALUE -4
 
+#define INT_OF(x, y) (((int) x << 8) + y)
+
+typedef enum
+{
+    MSG_TYPE_NEW_ORDER_SINGLE = (int) 'D',
+    MSG_TYPE_EXECUTION_REPORT = (int) '8',
+    MSG_TYPE_MASS_QUOTE = (int) 'i',
+    MSG_TYPE_MASS_QUOTE_ACK = (int) 'b',
+    MSG_TYPE_TRACE_REQ = INT_OF('x', 'r'),
+    MSG_TYPE_TRACE_RSP = INT_OF('x', 's')
+} msg_type_t;
+
 // prototypes
 int parse_fix_message(
     const char* buf, int len,

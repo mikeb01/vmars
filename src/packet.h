@@ -19,7 +19,7 @@ typedef struct
 {
     int64_t tv_sec;
     int64_t tv_nsec;
-    char msg_type;
+    int msg_type;
     int32_t key_len;
     char key[0];
 } fix_message_summary_t;

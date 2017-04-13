@@ -20,7 +20,7 @@ typedef struct
 
 typedef struct
 {
-    char message_type;
+    int message_type;
     char ord_status;
     str_t sender_comp_id;
     str_t cl_ord_id;
@@ -36,9 +36,13 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
     switch (fix_tag)
     {
         case FIX_MSG_TYPE:
-            if (len > 0)
+            if (len == 1)
             {
                 fix_details->message_type = fix_value[0];
+            }
+            else if (len == 2)
+            {
+                fix_details->message_type = INT_OF(fix_value[0], fix_value[1]);
             }
             break;
 
@@ -97,7 +101,9 @@ static void process_for_latency_measurement(const capture_context_t* ctx, fix_de
 
     switch (fix_details->message_type)
     {
-        case 'D':
+        case MSG_TYPE_NEW_ORDER_SINGLE:
+        case MSG_TYPE_MASS_QUOTE:
+        case MSG_TYPE_TRACE_REQ:
             should_process = true;
             remote_id = fix_details->sender_comp_id;
             local_id = fix_details->target_comp_id;
@@ -105,23 +111,9 @@ static void process_for_latency_measurement(const capture_context_t* ctx, fix_de
 
             break;
 
-        case '8':
-            should_process = true;
-            local_id = fix_details->sender_comp_id;
-            remote_id = fix_details->target_comp_id;
-            instruction = fix_details->cl_ord_id;
-
-            break;
-
-        case 'i':
-            should_process = true;
-            remote_id = fix_details->sender_comp_id;
-            local_id = fix_details->target_comp_id;
-            instruction = fix_details->cl_ord_id;
-
-            break;
-
-        case 'b':
+        case MSG_TYPE_EXECUTION_REPORT:
+        case MSG_TYPE_MASS_QUOTE_ACK:
+        case MSG_TYPE_TRACE_RSP:
             should_process = true;
             local_id = fix_details->sender_comp_id;
             remote_id = fix_details->target_comp_id;
