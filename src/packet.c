@@ -132,7 +132,6 @@ static int setup_socket(struct ring* ring, char* netdev)
         return -1;
     }
 
-
     ring->map = mmap(
         NULL, ring->req.tp_block_size * ring->req.tp_block_nr, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
     if (ring->map == MAP_FAILED)
