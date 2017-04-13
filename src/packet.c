@@ -264,7 +264,6 @@ void process_for_latency_measurement(const capture_context_t* ctx, fix_details_t
     switch (fix_details->message_type)
     {
         case 'D':
-        {
             should_process = true;
 
             remote_id = fix_details->sender_comp_id;
@@ -275,7 +274,18 @@ void process_for_latency_measurement(const capture_context_t* ctx, fix_details_t
             instruction_len = fix_details->cl_ord_id_len;
 
             break;
-        }
+
+        case '8':
+            should_process = true;
+
+            local_id = fix_details->sender_comp_id;
+            local_id_len = fix_details->sender_comp_id_len;
+            remote_id = fix_details->target_comp_id;
+            remote_id_len = fix_details->target_comp_id_len;
+            instruction = fix_details->cl_ord_id;
+            instruction_len = fix_details->cl_ord_id_len;
+
+            break;
 
         default:
             break;

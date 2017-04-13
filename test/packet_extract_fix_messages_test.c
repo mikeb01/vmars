@@ -47,7 +47,7 @@ static void verify_single_message(capture_context_t* ptr, const char* fix_messag
     free(buf);
 }
 
-static void parse_simple_message(capture_context_t* ptr)
+static void parse_new_order_single(capture_context_t* ptr)
 {
     verify_single_message(
         ptr,
@@ -58,6 +58,14 @@ static void parse_simple_message(capture_context_t* ptr)
         ptr,
         "8=FIX.4.2|9=131|35=D|34=659|49=BROKER04|56=REUTERS|52=20070123-19:09:43|38=1000|59=1|100=N|40=1|11=ORD10001|60=20070123-19:01:17|48=4001|54=1|21=2|10=227|",
         'D', "BROKER04|REUTERS|ORD10001|4001");
+}
+
+static void parse_execution_report(capture_context_t* ptr)
+{
+    verify_single_message(
+        ptr,
+        "8=FIX.4.2|9=264|35=8|49=FIX-API|56=user1n3xpr3n09lph|34=4|52=20170412-23:44:20.150|60=20170412-23:44:20.117|20=0|22=8|6=0|11=orderT8B'4ye6sVoCDb|17=QLAKAAAAAAAAAAAC|48=180385|55=instrument1wpxw3fgom2mq|1=1|37=QLAKAAAAAAAAAAAB|151=10.0|14=0.0|38=10.0|54=1|44=100.0|59=0|150=0|39=0|10=232|",
+        '8', "user1n3xpr3n09lph|FIX-API|orderT8B'4ye6sVoCDb|instrument1wpxw3fgom2mq");
 }
 
 int main()
@@ -77,5 +85,6 @@ int main()
         .rb = &rb
     };
 
-    parse_simple_message(&ctx);
+    parse_new_order_single(&ctx);
+    parse_execution_report(&ctx);
 }
