@@ -70,6 +70,22 @@ static void parse_execution_report(capture_context_t* ptr)
         '8', "user1n3xpr3n09lph|FIX-API|orderT8B'4ye6sVoCDb|instrument1wpxw3fgom2mq");
 }
 
+void parse_mass_quote(capture_context_t* ptr)
+{
+    verify_single_message(
+        ptr,
+        "8=FIX.4.2|9=198|35=i|34=4|49=baseUni1ds7nwwsj62ob|52=20170413-01:22:09.595|56=FIX-API|47=P|117=clIdE4c]oav3SF7bg\"L|581=3|296=1|302=1|311=instrument1psh813x11j3i|309=180387|305=8|304=1|295=1|299=0|132=50|134=100000|10=119|",
+        'i', "baseUni1ds7nwwsj62ob|FIX-API|clIdE4c]oav3SF7bg\"L|instrument1psh813x11j3i");
+}
+
+void parse_mass_quote_ack(capture_context_t* ptr)
+{
+    verify_single_message(
+        ptr,
+        "8=FIX.4.2|9=157|35=b|49=FIX-API|56=baseUni1ds7nwwsj62ob|34=4|52=20170413-01:22:09.613|297=0|117=clIdE4c]oav3SF7bg\"L|296=1|302=1|311=instrument1psh813x11j3i|309=180387|305=8|10=019|",
+        'b',  "baseUni1ds7nwwsj62ob|FIX-API|clIdE4c]oav3SF7bg\"L|instrument1psh813x11j3i");
+}
+
 int main()
 {
     struct boyermoore_s matcher;
@@ -89,4 +105,6 @@ int main()
 
     parse_new_order_single(&ctx);
     parse_execution_report(&ctx);
+    parse_mass_quote(&ctx);
+    parse_mass_quote_ack(&ctx);
 }

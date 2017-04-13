@@ -14,18 +14,19 @@
 
 typedef struct
 {
+    const char* s;
+    int len;
+} str_t;
+
+typedef struct
+{
     char message_type;
     char ord_status;
-    const char* sender_comp_id;
-    int sender_comp_id_len;
-    const char* cl_ord_id;
-    int cl_ord_id_len;
-    const char* target_comp_id;
-    int target_comp_id_len;
-    const char* symbol;
-    int symbol_len;
-    const char* security_id;
-    int security_id_len;
+    str_t sender_comp_id;
+    str_t cl_ord_id;
+    str_t target_comp_id;
+    str_t symbol;
+    str_t security_id;
 } fix_details_t;
 
 static void handle_tag(void* context, int fix_tag, const char* fix_value, int len)
@@ -42,33 +43,44 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
             break;
 
         case FIX_CL_ORD_ID:
-            fix_details->cl_ord_id = fix_value;
-            fix_details->cl_ord_id_len = len;
+            fix_details->cl_ord_id.s = fix_value;
+            fix_details->cl_ord_id.len = len;
             break;
 
         case FIX_QUOTE_ID:
-            fix_details->cl_ord_id = fix_value;
-            fix_details->cl_ord_id_len = len;
+            fix_details->cl_ord_id.s = fix_value;
+            fix_details->cl_ord_id.len = len;
             break;
 
         case FIX_SENDER_COMP_ID:
-            fix_details->sender_comp_id = fix_value;
-            fix_details->sender_comp_id_len = len;
+            fix_details->sender_comp_id.s = fix_value;
+            fix_details->sender_comp_id.len = len;
             break;
 
         case FIX_TARGET_COMP_ID:
-            fix_details->target_comp_id = fix_value;
-            fix_details->target_comp_id_len = len;
+            fix_details->target_comp_id.s = fix_value;
+            fix_details->target_comp_id.len = len;
             break;
 
         case FIX_SYMBOL:
-            fix_details->symbol = fix_value;
-            fix_details->symbol_len = len;
+            fix_details->symbol.s = fix_value;
+            fix_details->symbol.len = len;
             break;
 
         case FIX_SECURITY_ID:
-            fix_details->security_id = fix_value;
-            fix_details->security_id_len = len;
+            fix_details->security_id.s = fix_value;
+            fix_details->security_id.len = len;
+            break;
+
+        case FIX_UNDERLYING_SECURITY_ID:
+            fix_details->security_id.s = fix_value;
+            fix_details->security_id.len = len;
+            break;
+
+        case FIX_UNDERLYING_SYMBOL:
+            fix_details->symbol.s = fix_value;
+            fix_details->symbol.len = len;
+            break;
 
         default:
             break;
@@ -78,38 +90,42 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
 static void process_for_latency_measurement(const capture_context_t* ctx, fix_details_t* fix_details)
 {
     bool should_process = false;
-    const char* remote_id = NULL;
-    int remote_id_len = 0;
-    const char* local_id = NULL;
-    int local_id_len = 0;
-    const char* instrument = NULL;
-    int instrument_len = 0;
-    const char* instruction = NULL;
-    int instruction_len = 0;
+    str_t remote_id = { .s = NULL, .len = 0 };
+    str_t local_id = { .s = NULL, .len = 0 };
+    str_t instrument = { .s = NULL, .len = 0 };
+    str_t instruction = { .s = NULL, .len = 0 };
 
     switch (fix_details->message_type)
     {
         case 'D':
             should_process = true;
-
             remote_id = fix_details->sender_comp_id;
-            remote_id_len = fix_details->sender_comp_id_len;
             local_id = fix_details->target_comp_id;
-            local_id_len = fix_details->target_comp_id_len;
             instruction = fix_details->cl_ord_id;
-            instruction_len = fix_details->cl_ord_id_len;
 
             break;
 
         case '8':
             should_process = true;
-
             local_id = fix_details->sender_comp_id;
-            local_id_len = fix_details->sender_comp_id_len;
             remote_id = fix_details->target_comp_id;
-            remote_id_len = fix_details->target_comp_id_len;
             instruction = fix_details->cl_ord_id;
-            instruction_len = fix_details->cl_ord_id_len;
+
+            break;
+
+        case 'i':
+            should_process = true;
+            remote_id = fix_details->sender_comp_id;
+            local_id = fix_details->target_comp_id;
+            instruction = fix_details->cl_ord_id;
+
+            break;
+
+        case 'b':
+            should_process = true;
+            local_id = fix_details->sender_comp_id;
+            remote_id = fix_details->target_comp_id;
+            instruction = fix_details->cl_ord_id;
 
             break;
 
@@ -122,19 +138,17 @@ static void process_for_latency_measurement(const capture_context_t* ctx, fix_de
         return;
     }
 
-    if (fix_details->symbol_len != 0)
+    if (fix_details->symbol.len != 0)
     {
         instrument = fix_details->symbol;
-        instrument_len = fix_details->symbol_len;
     }
-    else if (fix_details->security_id_len != 0)
+    else if (fix_details->security_id.len != 0)
     {
         instrument = fix_details->security_id;
-        instrument_len = fix_details->security_id_len;
     }
 
     const size_t summary_header_len = sizeof(fix_message_summary_t);
-    const int key_len = remote_id_len + 1 + local_id_len + 1 + instruction_len + 1 + instrument_len;
+    const int key_len = remote_id.len + 1 + local_id.len + 1 + instruction.len + 1 + instrument.len;
 
     rb_record_t* record = spsc_rb_claim(ctx->rb, summary_header_len + key_len);
 
@@ -148,30 +162,26 @@ static void process_for_latency_measurement(const capture_context_t* ctx, fix_de
         summary->key_len = key_len;
 
         int offset = 0;
-        int len = remote_id_len;
 
-        strncpy(&summary->key[offset], remote_id, (size_t) len);
-        offset += len;
-
-        summary->key[offset] = '|';
-        offset += 1;
-
-        len = local_id_len;
-        strncpy(&summary->key[offset], local_id, (size_t) len);
-        offset += len;
+        strncpy(&summary->key[offset], remote_id.s, (size_t) remote_id.len);
+        offset += remote_id.len;
 
         summary->key[offset] = '|';
         offset += 1;
 
-        len = instruction_len;
-        strncpy(&summary->key[offset], instruction, (size_t) len);
-        offset += len;
+        strncpy(&summary->key[offset], local_id.s, (size_t) local_id.len);
+        offset += local_id.len;
 
         summary->key[offset] = '|';
         offset += 1;
 
-        len = instrument_len;
-        strncpy(&summary->key[offset], instrument, (size_t) len);
+        strncpy(&summary->key[offset], instruction.s, (size_t) instruction.len);
+        offset += instruction.len;
+
+        summary->key[offset] = '|';
+        offset += 1;
+
+        strncpy(&summary->key[offset], instrument.s, (size_t) instrument.len);
 
         spsc_rb_publish(ctx->rb, record);
     }

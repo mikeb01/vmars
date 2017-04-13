@@ -16,7 +16,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <assert.h>
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <poll.h>
@@ -33,7 +32,6 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <netdb.h>
-#include <stdbool.h>
 
 #include "simpleboyermoore.h"
 #include "spsc_rb.h"
