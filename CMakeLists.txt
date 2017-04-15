@@ -11,14 +11,18 @@ set(SOURCE
     src/fixparser.c
     src/spsc_rb.c
     src/simpleboyermoore.c
-    src/fix.c)
+    src/fix.c
+    src/latency_handler.c
+    src/counter_handler.c)
 
 set(HEADERS
     src/packet.h
     src/fixparser.h
     src/simpleboyermoore.h
     src/spsc_rb.h
-    src/fix.h)
+    src/fix.h
+    src/latency_handler.h
+    src/counter_handler.h)
 
 add_executable(
     packet

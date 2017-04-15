@@ -69,9 +69,8 @@ struct block_desc
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
-void sighandler(int num)
+void packet_sighandler(int num)
 {
-    printf("Terminating\n");
     sigint = 1;
 }
 #pragma clang diagnostic pop

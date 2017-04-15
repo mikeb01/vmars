@@ -11,6 +11,8 @@
 #include "fixparser.h"
 #include "spsc_rb.h"
 #include "packet.h"
+#include "fix.h"
+#include "counter_handler.h"
 
 typedef struct
 {
@@ -183,7 +185,7 @@ static void process_for_latency_measurement(const capture_context_t* ctx, fix_de
     }
 }
 
-void extract_fix_messages(const capture_context_t* ctx, const char* data_ptr, size_t data_len)
+void extract_fix_messages(capture_context_t* ctx, const char* data_ptr, size_t data_len)
 {
     fix_details_t fix_details;
 
@@ -222,6 +224,8 @@ void extract_fix_messages(const capture_context_t* ctx, const char* data_ptr, si
             }
             else if (result == FIX_EMESSAGETOOSHORT)
             {
+                int64_t c = ctx->counters.invalid_checksums;
+                __atomic_store_n(&ctx->counters.invalid_checksums, c + 1, __ATOMIC_RELEASE);
                 // Copy data to buffer keyed by rxhash.
             }
             else
