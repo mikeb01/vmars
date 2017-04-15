@@ -12,7 +12,6 @@
 #include "spsc_rb.h"
 #include "packet.h"
 #include "fix.h"
-#include "counter_handler.h"
 
 typedef struct
 {
@@ -93,7 +92,8 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
     }
 }
 
-static void process_for_latency_measurement(const capture_context_t* ctx, fix_details_t* fix_details)
+static void process_for_latency_measurement(
+    const capture_context_t* ctx, uint32_t tv_sec, uint32_t tv_nsec, fix_details_t* fix_details)
 {
     bool should_process = false;
     str_t remote_id = { .s = NULL, .len = 0 };
@@ -142,7 +142,7 @@ static void process_for_latency_measurement(const capture_context_t* ctx, fix_de
     }
 
     const size_t summary_header_len = sizeof(fix_message_summary_t);
-    const int key_len = remote_id.len + 1 + local_id.len + 1 + instruction.len + 1 + instrument.len;
+    const int key_len = remote_id.len + 1 + local_id.len + 1 + instruction.len + 1 + instrument.len + 1;
 
     rb_record_t* record = spsc_rb_claim(ctx->rb, summary_header_len + key_len);
 
@@ -150,8 +150,8 @@ static void process_for_latency_measurement(const capture_context_t* ctx, fix_de
     {
         fix_message_summary_t* summary = (fix_message_summary_t*) record->data;
 
-        summary->tv_sec = 1;
-        summary->tv_nsec = 2;
+        summary->tv_sec = tv_sec;
+        summary->tv_nsec = tv_nsec;
         summary->msg_type = (*fix_details).message_type;
         summary->key_len = key_len;
 
@@ -176,6 +176,9 @@ static void process_for_latency_measurement(const capture_context_t* ctx, fix_de
         offset += 1;
 
         strncpy(&summary->key[offset], instrument.s, (size_t) instrument.len);
+        offset += instrument.len;
+
+        summary->key[offset] = '\0';
 
         spsc_rb_publish(ctx->rb, record);
     }
@@ -185,7 +188,10 @@ static void process_for_latency_measurement(const capture_context_t* ctx, fix_de
     }
 }
 
-void extract_fix_messages(capture_context_t* ctx, const char* data_ptr, size_t data_len)
+void extract_fix_messages(
+    capture_context_t* ctx,
+    uint32_t tv_sec, uint32_t tv_nsec,
+    const char* data_ptr, size_t data_len)
 {
     fix_details_t fix_details;
 
@@ -220,7 +226,7 @@ void extract_fix_messages(capture_context_t* ctx, const char* data_ptr, size_t d
 
             if (result > 0)
             {
-                process_for_latency_measurement(ctx, &fix_details);
+                process_for_latency_measurement(ctx, tv_sec, tv_nsec, &fix_details);
             }
             else if (result == FIX_EMESSAGETOOSHORT)
             {

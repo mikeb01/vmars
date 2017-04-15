@@ -22,7 +22,8 @@ set(HEADERS
     src/spsc_rb.h
     src/fix.h
     src/latency_handler.h
-    src/counter_handler.h)
+    src/counter_handler.h
+    src/khash.h)
 
 add_executable(
     packet
@@ -39,6 +40,7 @@ target_include_directories(simpleboyermoore_test PRIVATE src)
 add_executable(
     fix_extract_fix_messages_test
     test/fix_extract_fix_messages_test.c
+    test/utils.h
     ${SOURCE} ${HEADERS})
 target_include_directories(fix_extract_fix_messages_test PRIVATE src)
 target_link_libraries(fix_extract_fix_messages_test ${CMAKE_THREAD_LIBS_INIT} rt)
@@ -48,6 +50,11 @@ add_executable(
 )
 target_include_directories(spsc_rb_test PRIVATE src)
 target_link_libraries(spsc_rb_test rt)
+
+add_executable(
+    fixparser_parse test/fixparser_parse.c src/fixparser.c src/fixparser.h test/utils.h
+)
+target_include_directories(fixparser_parse PRIVATE src)
 
 add_test(fix_exctract_fix_messages fix_extract_fix_messages_test)
 add_test(spsc_rb spsc_rb_test)

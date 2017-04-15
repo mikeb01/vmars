@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "counter_handler.h"
 
@@ -20,11 +21,12 @@ void counters_sighandler(int num)
 void* poll_counters(void* context)
 {
     monitoring_counters_vec_t* counters_vec = (monitoring_counters_vec_t*) context;
-    monitoring_counters_t aggregate_counters = { .corrupt_messages = 0, .invalid_checksums = 0 };
+    monitoring_counters_t aggregate_counters;
 
     while (!sigint)
     {
-        sleep(10);
+        sleep(2);
+        memset(&aggregate_counters, 0, sizeof(monitoring_counters_t));
 
         for (int i = 0; i < counters_vec->len; i++)
         {

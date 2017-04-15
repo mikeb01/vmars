@@ -212,7 +212,7 @@ static void display(capture_context_t* ctx, struct tpacket3_hdr* ppd)
         return;
     }
 
-    extract_fix_messages(ctx, data_ptr, data_len);
+    extract_fix_messages(ctx, ppd->tp_sec, ppd->tp_nsec, data_ptr, data_len);
 
     size_t copy_len = data_len < 255 ? data_len : 255;
 

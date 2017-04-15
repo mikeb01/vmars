@@ -8,31 +8,12 @@
 #include "packet.h"
 #include "fixparser.h"
 #include "fix.h"
-
-static char* fixify(const char* buf)
-{
-    const size_t buf_len = strlen(buf);
-    char* new_buf = (char*) calloc(buf_len + 1, sizeof(char));
-
-    for (int i = 0; i < buf_len; i++)
-    {
-        if ('|' == buf[i])
-        {
-            new_buf[i] = '\1';
-        }
-        else
-        {
-            new_buf[i] = buf[i];
-        }
-    }
-
-    return new_buf;
-}
+#include "utils.h"
 
 static void verify_single_message(capture_context_t* ptr, const char* fix_message, msg_type_t msg_type, const char* key)
 {
     char* buf = fixify(fix_message);
-    extract_fix_messages(ptr, buf, strlen(buf));
+    extract_fix_messages(ptr, 1, 2, buf, strlen(buf));
 
     const rb_record_t* msg = spsc_rb_poll(ptr->rb);
 
