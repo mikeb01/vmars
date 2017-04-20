@@ -1,10 +1,31 @@
 cmake_minimum_required(VERSION 3.5)
 enable_testing()
-
 project(packet_mmap)
+
+include(ExternalProject)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -g")
 find_package(Threads)
+
+##########################################################
+# HdrHistogram usage - use MD5 as means to identify snapshot
+
+ExternalProject_Add(
+    hdr_histogram
+    URL ${CMAKE_CURRENT_SOURCE_DIR}/lib/HdrHistogram_c-0.9.6.zip
+    URL_MD5 39007a9f2770b7cc485c3e90d36145f7
+    INSTALL_COMMAND ""
+)
+
+ExternalProject_Get_Property(hdr_histogram source_dir)
+set(HDRHISTOGRAM_SOURCE_DIR ${source_dir})
+ExternalProject_Get_Property(hdr_histogram binary_dir)
+set(HDRHISTOGRAM_BINARY_DIR ${binary_dir})
+
+set(HDRHISTOGRAM_LIBS
+    ${HDRHISTOGRAM_BINARY_DIR}/src/${CMAKE_STATIC_LIBRARY_PREFIX}hdr_histogram_static${CMAKE_STATIC_LIBRARY_SUFFIX}
+    )
+
 
 set(SOURCE
     src/packet.c
