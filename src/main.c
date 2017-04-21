@@ -39,7 +39,7 @@ int main(int argc, char** argp)
     vmars_monitoring_counters_vec_t counters_vec;
 
     int option_index = 0;
-    while ((opt = getopt_long(argc, argp, "i:t:p:", long_options, &option_index)) != -1)
+    while ((opt = getopt_long(argc, argp, "i:t:c:h:p:", long_options, &option_index)) != -1)
     {
         switch (opt)
         {
@@ -51,6 +51,14 @@ int main(int argc, char** argp)
                 break;
             case 'c':
                 config.capture_port = atoi(optarg);
+                break;
+
+            case 'h':
+                config.udp_host = optarg;
+                break;
+
+            case 'p':
+                config.udp_port = atoi(optarg);
                 break;
 
             default: /* '?' */
@@ -75,7 +83,9 @@ int main(int argc, char** argp)
         exit(EXIT_FAILURE);
     }
 
-    printf("Interface: %s, port: %d, num threads: %d\n", config.interface, config.capture_port, config.num_threads);
+    printf(
+        "Interface: %s, port: %d, num threads: %d, udp host: %s, udp port: %d\n",
+        config.interface, config.capture_port, config.num_threads, config.udp_host, config.udp_port);
 
     pthread_t* polling_threads = calloc((size_t) config.num_threads, sizeof(pthread_t));
     pthread_t* latency_thread = calloc(1, sizeof(pthread_t));

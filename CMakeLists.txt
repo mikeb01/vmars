@@ -35,7 +35,8 @@ set(SOURCE
     src/simpleboyermoore.c
     src/fix.c
     src/latency_handler.c
-    src/counter_handler.c)
+    src/counter_handler.c
+    src/JodieClient.c)
 
 set(HEADERS
     src/common.h
@@ -46,7 +47,8 @@ set(HEADERS
     src/fix.h
     src/latency_handler.h
     src/counter_handler.h
-    src/khash.h)
+    src/khash.h
+    src/JodieClient.h)
 
 add_executable(
     packet

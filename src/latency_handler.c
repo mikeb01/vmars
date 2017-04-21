@@ -8,6 +8,9 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <hdr_histogram.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #include "common.h"
 #include "spsc_rb.h"
@@ -17,6 +20,7 @@
 #include "fixparser.h"
 #include "latency_handler.h"
 #include "khash.h"
+#include "JodieClient.h"
 
 #define MAX_POLLS 20
 
@@ -138,6 +142,8 @@ void* poll_ring_buffers(void* context)
     struct hdr_histogram* histogram;
     hdr_init(1, INT64_C(10000000000), 2, &histogram);
 
+    jodie_server.init(ctx->config->udp_host, ctx->config->udp_port);
+
     clock_gettime(CLOCK_MONOTONIC, &last_timestamp);
 
     while (!sigint)
@@ -147,6 +153,9 @@ void* poll_ring_buffers(void* context)
         if (curr_timestamp.tv_sec > last_timestamp.tv_sec)
         {
             printf("Max latency: %ld\n", hdr_max(histogram));
+            jodie_server.logGauge("vmars.latency.max", hdr_max(histogram), curr_timestamp.tv_sec * 1000);
+            jodie_server.flush();
+
             last_timestamp = curr_timestamp;
             hdr_reset(histogram);
         }
