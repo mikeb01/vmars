@@ -27,6 +27,7 @@ set(HDRHISTOGRAM_LIBS
     )
 
 include_directories(${HDRHISTOGRAM_SOURCE_DIR}/src)
+link_libraries(${HDRHISTOGRAM_LIBS} ${CMAKE_THREAD_LIBS_INIT} rt m)
 
 set(SOURCE
     src/packet.c
@@ -51,11 +52,9 @@ set(HEADERS
     src/JodieClient.h)
 
 add_executable(
-    packet
+    vmars
     src/main.c
     ${SOURCE} ${HEADERS})
-target_include_directories(packet PRIVATE ${HDRHISTOGRAM_SOURCE_DIR}/src)
-target_link_libraries(packet ${HDRHISTOGRAM_LIBS} ${CMAKE_THREAD_LIBS_INIT} rt m)
 
 add_executable(directio src/directio.c)
 
@@ -69,16 +68,17 @@ add_executable(
     test/utils.h
     ${SOURCE} ${HEADERS})
 target_include_directories(fix_extract_fix_messages_test PRIVATE src)
-target_link_libraries(fix_extract_fix_messages_test ${HDRHISTOGRAM_LIBS} ${CMAKE_THREAD_LIBS_INIT} rt m)
 
 add_executable(
     spsc_rb_test src/spsc_rb.h src/spsc_rb.c test/spsc_rb_test.c
 )
 target_include_directories(spsc_rb_test PRIVATE src)
-target_link_libraries(spsc_rb_test rt)
 
 add_executable(
-    fixparser_parse test/fixparser_parse.c src/fixparser.c src/fixparser.h test/utils.h
+    fixparser_parse
+    test/fixparser_parse.c
+    test/utils.h
+    ${SOURCE} ${HEADERS}
 )
 target_include_directories(fixparser_parse PRIVATE src)
 
