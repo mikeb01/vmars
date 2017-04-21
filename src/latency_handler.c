@@ -29,6 +29,7 @@ static sig_atomic_t sigint = 0;
 void vmars_latency_sighandler(int num)
 {
     sigint = 1;
+    jodie_server.close();
 }
 
 typedef struct
