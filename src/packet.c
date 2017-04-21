@@ -33,6 +33,7 @@
 #include <sys/ioctl.h>
 #include <netdb.h>
 
+#include "common.h"
 #include "simpleboyermoore.h"
 #include "spsc_rb.h"
 #include "counter_handler.h"

@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "common.h"
 #include "counter_handler.h"
 
 static sig_atomic_t sigint = 0;
@@ -20,7 +21,7 @@ void counters_sighandler(int num)
 
 void* poll_counters(void* context)
 {
-    monitoring_counters_vec_t* counters_vec = (monitoring_counters_vec_t*) context;
+    vmars_counters_context_t* ctx = (vmars_counters_context_t*) context;
     monitoring_counters_t aggregate_counters;
 
     while (!sigint)
@@ -28,10 +29,10 @@ void* poll_counters(void* context)
         sleep(2);
         memset(&aggregate_counters, 0, sizeof(monitoring_counters_t));
 
-        for (int i = 0; i < counters_vec->len; i++)
+        for (int i = 0; i < ctx->counters_vec.len; i++)
         {
-            aggregate_counters.invalid_checksums += counters_vec->counters[i]->invalid_checksums;
-            aggregate_counters.corrupt_messages += counters_vec->counters[i]->corrupt_messages;
+            aggregate_counters.invalid_checksums += ctx->counters_vec.counters[i]->invalid_checksums;
+            aggregate_counters.corrupt_messages += ctx->counters_vec.counters[i]->corrupt_messages;
         }
 
         printf(

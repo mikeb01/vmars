@@ -38,6 +38,7 @@ set(SOURCE
     src/counter_handler.c)
 
 set(HEADERS
+    src/common.h
     src/packet.h
     src/fixparser.h
     src/simpleboyermoore.h

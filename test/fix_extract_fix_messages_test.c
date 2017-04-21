@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include "common.h"
 #include "simpleboyermoore.h"
 #include "spsc_rb.h"
 #include "counter_handler.h"

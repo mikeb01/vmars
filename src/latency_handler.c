@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <hdr_histogram.h>
 
+#include "common.h"
 #include "spsc_rb.h"
 #include "counter_handler.h"
 #include "packet.h"
@@ -130,7 +131,7 @@ void calculate_latency(kh_latency_t* latency_table, struct hdr_histogram* histog
 
 void* poll_ring_buffers(void* context)
 {
-    buffer_vec_t* buffer_vec = (buffer_vec_t*) context;
+    vmars_latency_handler_context_t* ctx = (vmars_latency_handler_context_t*) context;
     khash_t(latency)* latency_table = kh_init(latency);
     struct timespec last_timestamp;
     struct timespec curr_timestamp;
@@ -150,9 +151,9 @@ void* poll_ring_buffers(void* context)
             hdr_reset(histogram);
         }
 
-        for (int i = 0; i < buffer_vec->len; i++)
+        for (int i = 0; i < ctx->buffer_vec.len; i++)
         {
-            spsc_rb_t* rb = buffer_vec->ring_buffers[i];
+            spsc_rb_t* rb = ctx->buffer_vec.ring_buffers[i];
             int poll_limit = MAX_POLLS;
 
             const rb_record_t* record;

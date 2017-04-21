@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include "common.h"
 #include "spsc_rb.h"
 #include "counter_handler.h"
 #include "packet.h"
@@ -24,17 +25,17 @@ static struct option long_options[] =
 {
     { "interface", required_argument, NULL, 'i' },
     { "num-threads", required_argument, NULL, 't' },
-    { "capture-port", required_argument, NULL, 'p' },
+    { "capture-port", required_argument, NULL, 'c' },
+    { "udp-host", required_argument, NULL, 'h' },
+    { "udp-port", required_argument, NULL, 'p' },
     { 0, 0, 0, 0}
 };
 
 int main(int argc, char** argp)
 {
     int opt;
-    char* interface = NULL;
-    int num_threads = 2;
-    int port = -1;
-    buffer_vec_t buffer_vec;
+    vmars_config_t config;
+    vmars_latency_handler_context_t latency_context;
     monitoring_counters_vec_t counters_vec;
 
     int option_index = 0;
@@ -43,59 +44,61 @@ int main(int argc, char** argp)
         switch (opt)
         {
             case 'i':
-                interface = optarg;
+                config.interface = optarg;
                 break;
             case 't':
-                num_threads = atoi(optarg);
+                config.num_threads = atoi(optarg);
                 break;
             case 'p':
-                port = atoi(optarg);
+                config.capture_port = atoi(optarg);
                 break;
+
             default: /* '?' */
                 fprintf(stderr, "Usage: %s [-t nsecs] [-n ] name\n", argp[0]);
                 exit(EXIT_FAILURE);
         }
     }
 
-    if (num_threads < 1)
+    if (config.num_threads < 1)
     {
         fprintf(stderr, "Number of threads (-n) must be positive\n");
         exit(EXIT_FAILURE);
     }
-    if (NULL == interface)
+    if (NULL == config.interface)
     {
         fprintf(stderr, "Must specify an interface (-i)\n");
         exit(EXIT_FAILURE);
     }
-    if (-1 == port)
+    if (-1 == config.capture_port)
     {
         fprintf(stderr, "Must specify a port (-p)\n");
         exit(EXIT_FAILURE);
     }
 
-    printf("Interface: %s, port: %d, num threads: %d\n", interface, port, num_threads);
+    printf("Interface: %s, port: %d, num threads: %d\n", config.interface, config.capture_port, config.num_threads);
 
-    pthread_t* polling_threads = calloc((size_t) num_threads, sizeof(pthread_t));
+    pthread_t* polling_threads = calloc((size_t) config.num_threads, sizeof(pthread_t));
     pthread_t* latency_thread = calloc(1, sizeof(pthread_t));
     pthread_t* counters_thread = calloc(1, sizeof(pthread_t));
 
-    capture_context_t* thread_contexts = calloc((size_t) num_threads, sizeof(capture_context_t));
+    capture_context_t* thread_contexts = calloc((size_t) config.num_threads, sizeof(capture_context_t));
 
-    buffer_vec.ring_buffers = calloc((size_t) num_threads, sizeof(spsc_rb_t*));
-    buffer_vec.len = num_threads;
+    latency_context.config = &config;
+    latency_context.buffer_vec.ring_buffers = calloc((size_t) config.num_threads, sizeof(spsc_rb_t*));
+    latency_context.buffer_vec.len = config.num_threads;
 
-    counters_vec.counters = calloc((size_t) num_threads, sizeof(spsc_rb_t*));
-    counters_vec.len = num_threads;
+    counters_vec.counters = calloc((size_t) config.num_threads, sizeof(spsc_rb_t*));
+    counters_vec.len = config.num_threads;
 
     signal(SIGINT, root_sighandler);
     int fanout_id = 1111;
 
-    for (int i = 0; i < num_threads; i++)
+    for (int i = 0; i < config.num_threads; i++)
     {
         thread_contexts[i].thread_num = i;
         thread_contexts[i].fanout_id = fanout_id;
         thread_contexts[i].interface = argp[1];
-        thread_contexts[i].port = port;
+        thread_contexts[i].port = config.capture_port;
         thread_contexts[i].rb = (spsc_rb_t*) calloc(1, sizeof(spsc_rb_t));
 
         if (thread_contexts[i].rb == NULL)
@@ -110,16 +113,16 @@ int main(int argc, char** argp)
             exit(EXIT_FAILURE);
         }
 
-        buffer_vec.ring_buffers[i] = thread_contexts[i].rb;
+        latency_context.buffer_vec.ring_buffers[i] = thread_contexts[i].rb;
         counters_vec.counters[i] = &thread_contexts[i].counters;
 
         pthread_create(&polling_threads[i], NULL, poll_socket, &thread_contexts[i]);
     }
 
-    pthread_create(latency_thread, NULL, poll_ring_buffers, &buffer_vec);
+    pthread_create(latency_thread, NULL, poll_ring_buffers, &latency_context);
     pthread_create(counters_thread, NULL, poll_counters, &counters_vec);
 
-    for (int i = 0; i < num_threads; i++)
+    for (int i = 0; i < config.num_threads; i++)
     {
         pthread_join(polling_threads[i], NULL);
     }

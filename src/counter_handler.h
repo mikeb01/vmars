@@ -17,6 +17,12 @@ typedef struct
     int len;
 } monitoring_counters_vec_t;
 
+typedef struct
+{
+    monitoring_counters_vec_t counters_vec;
+    vmars_config_t config;
+} vmars_counters_context_t;
+
 void counters_sighandler(int num);
 
 void* poll_counters(void* context);

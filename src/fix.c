@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "common.h"
 #include "simpleboyermoore.h"
 #include "fixparser.h"
 #include "spsc_rb.h"
