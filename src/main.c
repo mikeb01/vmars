@@ -36,7 +36,7 @@ int main(int argc, char** argp)
     int opt;
     vmars_config_t config;
     vmars_latency_handler_context_t latency_context;
-    monitoring_counters_vec_t counters_vec;
+    vmars_monitoring_counters_vec_t counters_vec;
 
     int option_index = 0;
     while ((opt = getopt_long(argc, argp, "i:t:p:", long_options, &option_index)) != -1)
@@ -49,7 +49,7 @@ int main(int argc, char** argp)
             case 't':
                 config.num_threads = atoi(optarg);
                 break;
-            case 'p':
+            case 'c':
                 config.capture_port = atoi(optarg);
                 break;
 

@@ -22,12 +22,12 @@ void counters_sighandler(int num)
 void* poll_counters(void* context)
 {
     vmars_counters_context_t* ctx = (vmars_counters_context_t*) context;
-    monitoring_counters_t aggregate_counters;
+    vmars_monitoring_counters_t aggregate_counters;
 
     while (!sigint)
     {
         sleep(2);
-        memset(&aggregate_counters, 0, sizeof(monitoring_counters_t));
+        memset(&aggregate_counters, 0, sizeof(vmars_monitoring_counters_t));
 
         for (int i = 0; i < ctx->counters_vec.len; i++)
         {

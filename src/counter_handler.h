@@ -9,17 +9,17 @@ typedef struct
 {
     int64_t invalid_checksums;
     int64_t corrupt_messages;
-} monitoring_counters_t;
+} vmars_monitoring_counters_t;
 
 typedef struct
 {
-    monitoring_counters_t** counters;
+    vmars_monitoring_counters_t** counters;
     int len;
-} monitoring_counters_vec_t;
+} vmars_monitoring_counters_vec_t;
 
 typedef struct
 {
-    monitoring_counters_vec_t counters_vec;
+    vmars_monitoring_counters_vec_t counters_vec;
     vmars_config_t config;
 } vmars_counters_context_t;
 

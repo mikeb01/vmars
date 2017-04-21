@@ -13,7 +13,7 @@ typedef struct
     int port;
     struct boyermoore_s* matcher;
     spsc_rb_t* rb;
-    monitoring_counters_t counters;
+    vmars_monitoring_counters_t counters;
 } capture_context_t;
 
 void packet_sighandler(int num);
