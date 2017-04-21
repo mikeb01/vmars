@@ -95,7 +95,7 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
 }
 
 static void process_for_latency_measurement(
-    const capture_context_t* ctx, uint32_t tv_sec, uint32_t tv_nsec, fix_details_t* fix_details)
+    const vmars_capture_context_t* ctx, uint32_t tv_sec, uint32_t tv_nsec, fix_details_t* fix_details)
 {
     bool should_process = false;
     str_t remote_id = { .s = NULL, .len = 0 };
@@ -143,14 +143,14 @@ static void process_for_latency_measurement(
         instrument = fix_details->security_id;
     }
 
-    const size_t summary_header_len = sizeof(fix_message_summary_t);
+    const size_t summary_header_len = sizeof(vmars_fix_message_summary_t);
     const int key_len = remote_id.len + 1 + local_id.len + 1 + instruction.len + 1 + instrument.len + 1;
 
-    rb_record_t* record = spsc_rb_claim(ctx->rb, summary_header_len + key_len);
+    vmars_rb_record_t* record = vmars_spsc_rb_claim(ctx->rb, summary_header_len + key_len);
 
     if (NULL != record)
     {
-        fix_message_summary_t* summary = (fix_message_summary_t*) record->data;
+        vmars_fix_message_summary_t* summary = (vmars_fix_message_summary_t*) record->data;
 
         summary->tv_sec = tv_sec;
         summary->tv_nsec = tv_nsec;
@@ -182,7 +182,7 @@ static void process_for_latency_measurement(
 
         summary->key[offset] = '\0';
 
-        spsc_rb_publish(ctx->rb, record);
+        vmars_spsc_rb_publish(ctx->rb, record);
     }
     else
     {
@@ -190,8 +190,8 @@ static void process_for_latency_measurement(
     }
 }
 
-void extract_fix_messages(
-    capture_context_t* ctx,
+void vmars_extract_fix_messages(
+    vmars_capture_context_t* ctx,
     uint32_t tv_sec, uint32_t tv_nsec,
     const char* data_ptr, size_t data_len)
 {

@@ -87,7 +87,7 @@ static void* map_buffer(size_t length)
     return address;
 }
 
-int spsc_rb_init(spsc_rb_t* rb, size_t capacity)
+int vmars_spsc_rb_init(vmars_spsc_rb_t* rb, size_t capacity)
 {
     if (!is_power_of_two(capacity) && is_multiple_of_page_size(capacity))
     {
@@ -96,7 +96,7 @@ int spsc_rb_init(spsc_rb_t* rb, size_t capacity)
 
     rb->buffer = map_buffer(capacity);
     rb->capacity = capacity;
-    rb->descriptor = calloc(1, sizeof(rb_descriptor_t));
+    rb->descriptor = calloc(1, sizeof(vmars_rb_descriptor_t));
 
     if (rb->buffer == NULL || rb->descriptor == NULL)
     {
@@ -106,9 +106,9 @@ int spsc_rb_init(spsc_rb_t* rb, size_t capacity)
     return 0;
 }
 
-rb_record_t* spsc_rb_claim(spsc_rb_t* rb, size_t length)
+vmars_rb_record_t* vmars_spsc_rb_claim(vmars_spsc_rb_t* rb, size_t length)
 {
-    const size_t record_lenth = length + sizeof(rb_record_t);
+    const size_t record_lenth = length + sizeof(vmars_rb_record_t);
     const size_t mask = rb->capacity - 1;
     const size_t required_capacity = record_lenth; // Cache align maybe.
 
@@ -119,7 +119,7 @@ rb_record_t* spsc_rb_claim(spsc_rb_t* rb, size_t length)
     size_t padding = 0;
     size_t tail_index = (size_t)tail & mask;
     const size_t to_buffer_end_length = rb->capacity - tail_index;
-    rb_record_t *record = NULL;
+    vmars_rb_record_t *record = NULL;
 
     if (length > rb->capacity)
     {
@@ -139,30 +139,30 @@ rb_record_t* spsc_rb_claim(spsc_rb_t* rb, size_t length)
         rb->descriptor->head_cache_position = head;
     }
 
-    record = (rb_record_t *)(rb->buffer + tail_index);
+    record = (vmars_rb_record_t *)(rb->buffer + tail_index);
     record->length = (int32_t) length;
 
     return record;
 }
 
-int spsc_rb_publish(spsc_rb_t* rb, rb_record_t* to_publish)
+int vmars_spsc_rb_publish(vmars_spsc_rb_t* rb, vmars_rb_record_t* to_publish)
 {
     const size_t mask = rb->capacity - 1;
     const int64_t tail = rb->descriptor->tail_position;
     const size_t tail_index = (size_t)tail & mask;
 
-    if (to_publish != (rb_record_t *)(rb->buffer + tail_index))
+    if (to_publish != (vmars_rb_record_t *)(rb->buffer + tail_index))
     {
         return EINVAL;
     }
 
-    int64_t new_tail = tail + to_publish->length + sizeof(rb_record_t);
+    int64_t new_tail = tail + to_publish->length + sizeof(vmars_rb_record_t);
     __atomic_store_n(&rb->descriptor->tail_position, new_tail, __ATOMIC_SEQ_CST);
 
     return 0;
 }
 
-const rb_record_t* spsc_rb_poll(spsc_rb_t* rb)
+const vmars_rb_record_t* vmars_spsc_rb_poll(vmars_spsc_rb_t* rb)
 {
     const int64_t head = rb->descriptor->head_position;
     const size_t head_index = (int32_t)head & (rb->capacity - 1);
@@ -181,22 +181,22 @@ const rb_record_t* spsc_rb_poll(spsc_rb_t* rb)
         rb->descriptor->tail_cache_position = tail;
     }
 
-    const rb_record_t* record = (rb_record_t*) (rb->buffer + head_index);
+    const vmars_rb_record_t* record = (vmars_rb_record_t*) (rb->buffer + head_index);
 
     return record;
 }
 
-int spsc_rb_release(spsc_rb_t* rb, const rb_record_t* to_release)
+int vmars_spsc_rb_release(vmars_spsc_rb_t* rb, const vmars_rb_record_t* to_release)
 {
     const int64_t head = rb->descriptor->head_position;
     const size_t head_index = (int32_t)head & (rb->capacity - 1);
     
-    if (to_release != (rb_record_t*) (rb->buffer + head_index))
+    if (to_release != (vmars_rb_record_t*) (rb->buffer + head_index))
     {
         return EINVAL;
     }
 
-    const size_t new_head = head + sizeof(rb_record_t) + to_release->length;
+    const size_t new_head = head + sizeof(vmars_rb_record_t) + to_release->length;
 
     __atomic_store_n(&rb->descriptor->head_position, new_head, __ATOMIC_SEQ_CST);
 

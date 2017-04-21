@@ -14,15 +14,15 @@ const char* test_message = "Here is a message";
 void publish_and_consume_single_message()
 {
     // Given
-    spsc_rb_t rb;
-    spsc_rb_init(&rb, 1 << 16);
+    vmars_spsc_rb_t rb;
+    vmars_spsc_rb_init(&rb, 1 << 16);
 
     // When
-    rb_record_t* record = spsc_rb_claim(&rb, 64);
+    vmars_rb_record_t* record = vmars_spsc_rb_claim(&rb, 64);
     strncpy((char *) record->data, test_message, strlen(test_message));
-    spsc_rb_publish(&rb, record);
-    const rb_record_t* polled = spsc_rb_poll(&rb);
-    spsc_rb_release(&rb, polled);
+    vmars_spsc_rb_publish(&rb, record);
+    const vmars_rb_record_t* polled = vmars_spsc_rb_poll(&rb);
+    vmars_spsc_rb_release(&rb, polled);
 
     // Then
     assert(polled != NULL);
@@ -34,19 +34,19 @@ void publish_and_consume_single_message()
 void publish_and_wrap_multiple_messages()
 {
     // Given
-    spsc_rb_t rb;
-    spsc_rb_init(&rb, 4096);
+    vmars_spsc_rb_t rb;
+    vmars_spsc_rb_init(&rb, 4096);
 
     for (int i = 0; i < 1000; i++)
     {
         // When
-        rb_record_t* record = spsc_rb_claim(&rb, strlen(test_message));
+        vmars_rb_record_t* record = vmars_spsc_rb_claim(&rb, strlen(test_message));
         assert(record != NULL);
 
         strncpy((char *) record->data, test_message, strlen(test_message));
-        spsc_rb_publish(&rb, record);
-        const rb_record_t* polled = spsc_rb_poll(&rb);
-        assert(spsc_rb_release(&rb, polled) != EINVAL);
+        vmars_spsc_rb_publish(&rb, record);
+        const vmars_rb_record_t* polled = vmars_spsc_rb_poll(&rb);
+        assert(vmars_spsc_rb_release(&rb, polled) != EINVAL);
 
         // Then
         assert(polled != NULL);
@@ -58,50 +58,50 @@ void publish_and_wrap_multiple_messages()
 void stop_accepting_messages_when_full()
 {
     // Given
-    spsc_rb_t rb;
-    spsc_rb_init(&rb, 4096);
+    vmars_spsc_rb_t rb;
+    vmars_spsc_rb_init(&rb, 4096);
 
-    int num_messages = 4096 / (int) (strlen(test_message) + sizeof(rb_record_t));
+    int num_messages = 4096 / (int) (strlen(test_message) + sizeof(vmars_rb_record_t));
 
     for (int i = 0; i < num_messages; i++)
     {
         // When
-        rb_record_t* record = spsc_rb_claim(&rb, strlen(test_message));
+        vmars_rb_record_t* record = vmars_spsc_rb_claim(&rb, strlen(test_message));
         strncpy((char *) record->data, test_message, strlen(test_message));
-        spsc_rb_publish(&rb, record);
+        vmars_spsc_rb_publish(&rb, record);
     }
 
-    assert(spsc_rb_claim(&rb, strlen(test_message)) == NULL);
+    assert(vmars_spsc_rb_claim(&rb, strlen(test_message)) == NULL);
 }
 
 void stop_accepting_messages_when_full_when_polled_not_released()
 {
     // Given
-    spsc_rb_t rb;
-    spsc_rb_init(&rb, 4096);
+    vmars_spsc_rb_t rb;
+    vmars_spsc_rb_init(&rb, 4096);
 
-    int num_messages = 4096 / (int) (strlen(test_message) + sizeof(rb_record_t));
+    int num_messages = 4096 / (int) (strlen(test_message) + sizeof(vmars_rb_record_t));
 
     for (int i = 0; i < num_messages; i++)
     {
         // When
-        rb_record_t* record = spsc_rb_claim(&rb, strlen(test_message));
+        vmars_rb_record_t* record = vmars_spsc_rb_claim(&rb, strlen(test_message));
         strncpy((char *) record->data, test_message, strlen(test_message));
-        spsc_rb_publish(&rb, record);
+        vmars_spsc_rb_publish(&rb, record);
 
-        spsc_rb_poll(&rb);
+        vmars_spsc_rb_poll(&rb);
     }
 
-    assert(spsc_rb_claim(&rb, strlen(test_message)) == NULL);
+    assert(vmars_spsc_rb_claim(&rb, strlen(test_message)) == NULL);
 }
 
 void return_null_when_no_messages_available()
 {
     // Given
-    spsc_rb_t rb;
-    spsc_rb_init(&rb, 4096);
+    vmars_spsc_rb_t rb;
+    vmars_spsc_rb_init(&rb, 4096);
 
-    assert(spsc_rb_poll(&rb) == NULL);
+    assert(vmars_spsc_rb_poll(&rb) == NULL);
 }
 
 int main(int argc, char** argv)

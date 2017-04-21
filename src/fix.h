@@ -12,10 +12,10 @@ typedef struct
     int msg_type;
     int32_t key_len;
     char key[0];
-} fix_message_summary_t;
+} vmars_fix_message_summary_t;
 
-void extract_fix_messages(
-    capture_context_t* ctx,
+void vmars_extract_fix_messages(
+    vmars_capture_context_t* ctx,
     uint32_t tv_sec, uint32_t tv_nsec,
     const char* data_ptr, size_t data_len);
 

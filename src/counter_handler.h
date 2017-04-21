@@ -23,8 +23,8 @@ typedef struct
     vmars_config_t config;
 } vmars_counters_context_t;
 
-void counters_sighandler(int num);
+void vmars_counters_sighandler(int num);
 
-void* poll_counters(void* context);
+void* vmars_poll_counters(void* context);
 
 #endif //PACKET_MMAP_COUNTER_HANDLER_H

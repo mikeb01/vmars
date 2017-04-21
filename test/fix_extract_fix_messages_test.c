@@ -12,28 +12,28 @@
 #include "fix.h"
 #include "utils.h"
 
-static void verify_single_message(capture_context_t* ptr, const char* fix_message, msg_type_t msg_type, const char* key)
+static void verify_single_message(vmars_capture_context_t* ptr, const char* fix_message, msg_type_t msg_type, const char* key)
 {
     char* buf = fixify(fix_message);
-    extract_fix_messages(ptr, 1, 2, buf, strlen(buf));
+    vmars_extract_fix_messages(ptr, 1, 2, buf, strlen(buf));
 
-    const rb_record_t* msg = spsc_rb_poll(ptr->rb);
+    const vmars_rb_record_t* msg = vmars_spsc_rb_poll(ptr->rb);
 
     assert(msg != NULL);
     assert(msg->length != 0);
 
-    const fix_message_summary_t* summary = (fix_message_summary_t*) msg->data;
+    const vmars_fix_message_summary_t* summary = (vmars_fix_message_summary_t*) msg->data;
 
     assert(summary->msg_type == msg_type);
     assert(summary->key_len == strlen(key));
     assert(strncmp(summary->key, key, strlen(key)) == 0);
 
-    spsc_rb_release(ptr->rb, msg);
+    vmars_spsc_rb_release(ptr->rb, msg);
 
     free(buf);
 }
 
-static void parse_new_order_single(capture_context_t* ptr)
+static void parse_new_order_single(vmars_capture_context_t* ptr)
 {
     verify_single_message(
         ptr,
@@ -46,7 +46,7 @@ static void parse_new_order_single(capture_context_t* ptr)
         MSG_TYPE_NEW_ORDER_SINGLE, "BROKER04|REUTERS|ORD10001|4001");
 }
 
-static void parse_execution_report(capture_context_t* ptr)
+static void parse_execution_report(vmars_capture_context_t* ptr)
 {
     verify_single_message(
         ptr,
@@ -54,7 +54,7 @@ static void parse_execution_report(capture_context_t* ptr)
         MSG_TYPE_EXECUTION_REPORT, "user1n3xpr3n09lph|FIX-API|orderT8B'4ye6sVoCDb|instrument1wpxw3fgom2mq");
 }
 
-void parse_mass_quote(capture_context_t* ptr)
+void parse_mass_quote(vmars_capture_context_t* ptr)
 {
     verify_single_message(
         ptr,
@@ -62,7 +62,7 @@ void parse_mass_quote(capture_context_t* ptr)
         MSG_TYPE_MASS_QUOTE, "baseUni1ds7nwwsj62ob|FIX-API|clIdE4c]oav3SF7bg\"L|instrument1psh813x11j3i");
 }
 
-void parse_mass_quote_ack(capture_context_t* ptr)
+void parse_mass_quote_ack(vmars_capture_context_t* ptr)
 {
     verify_single_message(
         ptr,
@@ -70,7 +70,7 @@ void parse_mass_quote_ack(capture_context_t* ptr)
         MSG_TYPE_MASS_QUOTE_ACK,  "baseUni1ds7nwwsj62ob|FIX-API|clIdE4c]oav3SF7bg\"L|instrument1psh813x11j3i");
 }
 
-void parse_trace_request(capture_context_t* ptr)
+void parse_trace_request(vmars_capture_context_t* ptr)
 {
     verify_single_message(
         ptr,
@@ -78,7 +78,7 @@ void parse_trace_request(capture_context_t* ptr)
         MSG_TYPE_TRACE_REQ, "traceUs18bdsdnueybod|FIX-API|5000|");
 }
 
-void parse_trace_response(capture_context_t* ptr)
+void parse_trace_response(vmars_capture_context_t* ptr)
 {
     verify_single_message(
         ptr,
@@ -90,10 +90,10 @@ int main()
 {
     struct boyermoore_s matcher;
     boyermoore_init("8=FIX.4.", &matcher);
-    spsc_rb_t rb;
-    spsc_rb_init(&rb, 4096);
+    vmars_spsc_rb_t rb;
+    vmars_spsc_rb_init(&rb, 4096);
 
-    capture_context_t ctx =
+    vmars_capture_context_t ctx =
     {
         .matcher = &matcher,
         .fanout_id = 0,

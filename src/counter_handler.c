@@ -14,12 +14,12 @@
 
 static sig_atomic_t sigint = 0;
 
-void counters_sighandler(int num)
+void vmars_counters_sighandler(int num)
 {
     sigint = 1;
 }
 
-void* poll_counters(void* context)
+void* vmars_poll_counters(void* context)
 {
     vmars_counters_context_t* ctx = (vmars_counters_context_t*) context;
     vmars_monitoring_counters_t aggregate_counters;

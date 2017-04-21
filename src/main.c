@@ -16,9 +16,9 @@ void root_sighandler(int num)
 {
     printf("Terminating\n");
 
-    packet_sighandler(num);
-    latency_sighandler(num);
-    counters_sighandler(num);
+    vmars_packet_sighandler(num);
+    vmars_latency_sighandler(num);
+    vmars_counters_sighandler(num);
 }
 
 static struct option long_options[] =
@@ -91,13 +91,13 @@ int main(int argc, char** argp)
     pthread_t* latency_thread = calloc(1, sizeof(pthread_t));
     pthread_t* counters_thread = calloc(1, sizeof(pthread_t));
 
-    capture_context_t* thread_contexts = calloc((size_t) config.num_threads, sizeof(capture_context_t));
+    vmars_capture_context_t* thread_contexts = calloc((size_t) config.num_threads, sizeof(vmars_capture_context_t));
 
     latency_context.config = &config;
-    latency_context.buffer_vec.ring_buffers = calloc((size_t) config.num_threads, sizeof(spsc_rb_t*));
+    latency_context.buffer_vec.ring_buffers = calloc((size_t) config.num_threads, sizeof(vmars_spsc_rb_t*));
     latency_context.buffer_vec.len = config.num_threads;
 
-    counters_vec.counters = calloc((size_t) config.num_threads, sizeof(spsc_rb_t*));
+    counters_vec.counters = calloc((size_t) config.num_threads, sizeof(vmars_spsc_rb_t*));
     counters_vec.len = config.num_threads;
 
     signal(SIGINT, root_sighandler);
@@ -109,7 +109,7 @@ int main(int argc, char** argp)
         thread_contexts[i].fanout_id = fanout_id;
         thread_contexts[i].interface = argp[1];
         thread_contexts[i].port = config.capture_port;
-        thread_contexts[i].rb = (spsc_rb_t*) calloc(1, sizeof(spsc_rb_t));
+        thread_contexts[i].rb = (vmars_spsc_rb_t*) calloc(1, sizeof(vmars_spsc_rb_t));
 
         if (thread_contexts[i].rb == NULL)
         {
@@ -117,7 +117,7 @@ int main(int argc, char** argp)
             exit(EXIT_FAILURE);
         }
 
-        if (spsc_rb_init(thread_contexts[i].rb, 4096) < 0)
+        if (vmars_spsc_rb_init(thread_contexts[i].rb, 4096) < 0)
         {
             fprintf(stderr, "Failed to init ring buffer.\n");
             exit(EXIT_FAILURE);
@@ -126,11 +126,11 @@ int main(int argc, char** argp)
         latency_context.buffer_vec.ring_buffers[i] = thread_contexts[i].rb;
         counters_vec.counters[i] = &thread_contexts[i].counters;
 
-        pthread_create(&polling_threads[i], NULL, poll_socket, &thread_contexts[i]);
+        pthread_create(&polling_threads[i], NULL, vmars_poll_socket, &thread_contexts[i]);
     }
 
     pthread_create(latency_thread, NULL, poll_ring_buffers, &latency_context);
-    pthread_create(counters_thread, NULL, poll_counters, &counters_vec);
+    pthread_create(counters_thread, NULL, vmars_poll_counters, &counters_vec);
 
     for (int i = 0; i < config.num_threads; i++)
     {

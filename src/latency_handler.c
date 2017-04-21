@@ -26,7 +26,7 @@
 
 static sig_atomic_t sigint = 0;
 
-void latency_sighandler(int num)
+void vmars_latency_sighandler(int num)
 {
     sigint = 1;
 }
@@ -87,7 +87,7 @@ static bool is_complement(int type_a, int type_b)
     }
 }
 
-void calculate_latency(kh_latency_t* latency_table, struct hdr_histogram* histogram, fix_message_summary_t* msg)
+void calculate_latency(kh_latency_t* latency_table, struct hdr_histogram* histogram, vmars_fix_message_summary_t* msg)
 {
     int ret;
     khint_t k;
@@ -162,17 +162,17 @@ void* poll_ring_buffers(void* context)
 
         for (int i = 0; i < ctx->buffer_vec.len; i++)
         {
-            spsc_rb_t* rb = ctx->buffer_vec.ring_buffers[i];
+            vmars_spsc_rb_t* rb = ctx->buffer_vec.ring_buffers[i];
             int poll_limit = MAX_POLLS;
 
-            const rb_record_t* record;
-            while (NULL != (record = spsc_rb_poll(rb)) && --poll_limit > 0)
+            const vmars_rb_record_t* record;
+            while (NULL != (record = vmars_spsc_rb_poll(rb)) && --poll_limit > 0)
             {
-                fix_message_summary_t* msg = (fix_message_summary_t*) record->data;
+                vmars_fix_message_summary_t* msg = (vmars_fix_message_summary_t*) record->data;
 
                 calculate_latency(latency_table, histogram, msg);
 
-                spsc_rb_release(rb, record);
+                vmars_spsc_rb_release(rb, record);
             }
         }
     }

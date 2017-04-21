@@ -6,6 +6,8 @@
 // gcc -DJODIE_DEBUG -o jodieclient JodieClient.c
 // 
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -79,7 +81,7 @@ signed long int jodie_getMillis()
 
 int jodie_logGauge(char* datapath, signed long int value, signed long int timestamp)
 {
-    unsigned size_estimate = 0;
+    size_t size_estimate = 0;
     char tmp_buf[BUFFER_SIZE];
 
     if (strlen(datapath) > (BUFFER_SIZE / 2))
@@ -111,7 +113,7 @@ int jodie_logGauge(char* datapath, signed long int value, signed long int timest
 
 int jodie_logCounter(char* datapath, signed long int value, signed long int timestamp)
 {
-    unsigned size_estimate = 0;
+    size_t size_estimate = 0;
     char tmp_buf[BUFFER_SIZE];
 
     if (strlen(datapath) > (BUFFER_SIZE / 2))
@@ -142,7 +144,7 @@ int jodie_logCounter(char* datapath, signed long int value, signed long int time
 
 int jodie_logPercent(char* datapath, signed long int value, signed long int timestamp)
 {
-    unsigned size_estimate = 0;
+    ssize_t size_estimate = 0;
     char tmp_buf[BUFFER_SIZE];
 
     if (strlen(datapath) > (BUFFER_SIZE / 2))
@@ -158,7 +160,9 @@ int jodie_logPercent(char* datapath, signed long int value, signed long int time
     sprintf(tmp_buf, "%s %lu %lu type=percent\n", datapath, value, timestamp);
 
     if (value > 100)
-    { value = 100; }
+    {
+        value = 100;
+    }
 
     size_estimate = strlen(tmp_buf);
 

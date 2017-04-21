@@ -71,7 +71,7 @@ struct block_desc
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
-void packet_sighandler(int num)
+void vmars_packet_sighandler(int num)
 {
     sigint = 1;
 }
@@ -184,7 +184,7 @@ static void prettify_fix_message(char* msg, size_t len)
 }
 
 
-static void display(capture_context_t* ctx, struct tpacket3_hdr* ppd)
+static void display(vmars_capture_context_t* ctx, struct tpacket3_hdr* ppd)
 {
     struct ethhdr* eth = (struct ethhdr*) ((uint8_t*) ppd + ppd->tp_mac);
     struct iphdr* ip = (struct iphdr*) ((uint8_t*) eth + ETH_HLEN);
@@ -214,7 +214,7 @@ static void display(capture_context_t* ctx, struct tpacket3_hdr* ppd)
         return;
     }
 
-    extract_fix_messages(ctx, ppd->tp_sec, ppd->tp_nsec, data_ptr, data_len);
+    vmars_extract_fix_messages(ctx, ppd->tp_sec, ppd->tp_nsec, data_ptr, data_len);
 
     size_t copy_len = data_len < 255 ? data_len : 255;
 
@@ -243,7 +243,7 @@ static void display(capture_context_t* ctx, struct tpacket3_hdr* ppd)
         ppd->tp_sec, ppd->tp_nsec, data);
 }
 
-static void walk_block(capture_context_t* ctx, struct block_desc* pbd)
+static void walk_block(vmars_capture_context_t* ctx, struct block_desc* pbd)
 {
     int num_pkts = pbd->h1.num_pkts, i;
     unsigned long bytes = 0;
@@ -294,7 +294,7 @@ void print_stats(int fd)
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreturn-stack-address"
-void* poll_socket(void* context)
+void* vmars_poll_socket(void* context)
 {
     int fd;
     struct ring ring;
@@ -303,7 +303,7 @@ void* poll_socket(void* context)
     struct block_desc* pbd;
     struct boyermoore_s matcher;
     
-    capture_context_t* ctx = (capture_context_t*) context;
+    vmars_capture_context_t* ctx = (vmars_capture_context_t*) context;
     
     boyermoore_init("8=FIX.4.", &matcher);
     memset(&ring, 0, sizeof(ring));

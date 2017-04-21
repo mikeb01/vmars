@@ -25,32 +25,32 @@ typedef struct
     int64_t head_position;
     uint8_t head_pad[(2 * CACHE_LINE_LENGTH) - sizeof(int64_t)];
 
-} rb_descriptor_t;
+} vmars_rb_descriptor_t;
 
 typedef struct
 {
     int32_t length;
     uint8_t data[0];
-} rb_record_t;
+} vmars_rb_record_t;
 #pragma pack(pop)
 
 
 typedef struct
 {
     uint8_t* buffer;
-    rb_descriptor_t* descriptor;
+    vmars_rb_descriptor_t* descriptor;
     size_t capacity;
-} spsc_rb_t;
+} vmars_spsc_rb_t;
 
 
-int spsc_rb_init(spsc_rb_t* rb, size_t capacity);
+int vmars_spsc_rb_init(vmars_spsc_rb_t* rb, size_t capacity);
 
-rb_record_t* spsc_rb_claim(spsc_rb_t* rb, size_t length);
+vmars_rb_record_t* vmars_spsc_rb_claim(vmars_spsc_rb_t* rb, size_t length);
 
-int spsc_rb_publish(spsc_rb_t* rb, rb_record_t* to_publish);
+int vmars_spsc_rb_publish(vmars_spsc_rb_t* rb, vmars_rb_record_t* to_publish);
 
-const rb_record_t* spsc_rb_poll(spsc_rb_t* rb);
+const vmars_rb_record_t* vmars_spsc_rb_poll(vmars_spsc_rb_t* rb);
 
-int spsc_rb_release(spsc_rb_t* rb, const rb_record_t* to_release);
+int vmars_spsc_rb_release(vmars_spsc_rb_t* rb, const vmars_rb_record_t* to_release);
 
 #endif //PACKET_MMAP_SPSC_H

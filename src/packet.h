@@ -12,12 +12,12 @@ typedef struct
     char* interface;
     int port;
     struct boyermoore_s* matcher;
-    spsc_rb_t* rb;
+    vmars_spsc_rb_t* rb;
     vmars_monitoring_counters_t counters;
-} capture_context_t;
+} vmars_capture_context_t;
 
-void packet_sighandler(int num);
+void vmars_packet_sighandler(int num);
 
-void* poll_socket(void* context);
+void* vmars_poll_socket(void* context);
 
 #endif //PACKET_MMAP_PACKET_H
