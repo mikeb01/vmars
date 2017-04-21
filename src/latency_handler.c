@@ -144,16 +144,27 @@ void* poll_ring_buffers(void* context)
 
     jodie_server.init(ctx->config->udp_host, ctx->config->udp_port);
 
-    clock_gettime(CLOCK_MONOTONIC, &last_timestamp);
+    clock_gettime(CLOCK_REALTIME, &last_timestamp);
 
     while (!sigint)
     {
-        clock_gettime(CLOCK_MONOTONIC, &curr_timestamp);
+        clock_gettime(CLOCK_REALTIME, &curr_timestamp);
 
         if (curr_timestamp.tv_sec > last_timestamp.tv_sec)
         {
             printf("Max latency: %ld\n", hdr_max(histogram));
             jodie_server.logGauge("vmars.latency.max", hdr_max(histogram), curr_timestamp.tv_sec * 1000);
+            jodie_server.logGauge("vmars.latency.50", hdr_value_at_percentile(histogram, 50), curr_timestamp.tv_sec * 1000);
+            jodie_server.logGauge("vmars.latency.99", hdr_value_at_percentile(histogram, 99), curr_timestamp.tv_sec * 1000);
+            jodie_server.logGauge("vmars.latency.9999", hdr_value_at_percentile(histogram, 99.99), curr_timestamp.tv_sec * 1000);
+            if (0 != histogram->total_count)
+            {
+                jodie_server.logGauge("vmars.latency.mean", (int64_t) hdr_mean(histogram), curr_timestamp.tv_sec * 1000);
+            }
+            else
+            {
+                jodie_server.logGauge("vmars.latency.mean", 0, curr_timestamp.tv_sec * 1000);
+            }
             jodie_server.flush();
 
             last_timestamp = curr_timestamp;
