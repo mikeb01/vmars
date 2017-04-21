@@ -5,8 +5,6 @@
 #ifndef PACKET_MMAP_PACKET_H
 #define PACKET_MMAP_PACKET_H
 
-#include "counter_handler.h"
-
 typedef struct
 {
     int thread_num;

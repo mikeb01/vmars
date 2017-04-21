@@ -3,12 +3,13 @@
 #include <stdint.h>
 #include <signal.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <getopt.h>
 
 #include "spsc_rb.h"
+#include "counter_handler.h"
 #include "packet.h"
 #include "latency_handler.h"
-#include "counter_handler.h"
 
 void root_sighandler(int num)
 {
@@ -19,6 +20,14 @@ void root_sighandler(int num)
     counters_sighandler(num);
 }
 
+static struct option long_options[] =
+{
+    { "interface", required_argument, NULL, 'i' },
+    { "num-threads", required_argument, NULL, 't' },
+    { "capture-port", required_argument, NULL, 'p' },
+    { 0, 0, 0, 0}
+};
+
 int main(int argc, char** argp)
 {
     int opt;
@@ -28,7 +37,8 @@ int main(int argc, char** argp)
     buffer_vec_t buffer_vec;
     monitoring_counters_vec_t counters_vec;
 
-    while ((opt = getopt(argc, argp, "i:t:p:")) != -1)
+    int option_index = 0;
+    while ((opt = getopt_long(argc, argp, "i:t:p:", long_options, &option_index)) != -1)
     {
         switch (opt)
         {
@@ -42,7 +52,7 @@ int main(int argc, char** argp)
                 port = atoi(optarg);
                 break;
             default: /* '?' */
-                fprintf(stderr, "Usage: %s [-t nsecs] [-n] name\n", argp[0]);
+                fprintf(stderr, "Usage: %s [-t nsecs] [-n ] name\n", argp[0]);
                 exit(EXIT_FAILURE);
         }
     }
@@ -62,6 +72,8 @@ int main(int argc, char** argp)
         fprintf(stderr, "Must specify a port (-p)\n");
         exit(EXIT_FAILURE);
     }
+
+    printf("Interface: %s, port: %d, num threads: %d\n", interface, port, num_threads);
 
     pthread_t* polling_threads = calloc((size_t) num_threads, sizeof(pthread_t));
     pthread_t* latency_thread = calloc(1, sizeof(pthread_t));

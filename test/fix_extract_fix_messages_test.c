@@ -5,6 +5,7 @@
 
 #include "simpleboyermoore.h"
 #include "spsc_rb.h"
+#include "counter_handler.h"
 #include "packet.h"
 #include "fixparser.h"
 #include "fix.h"

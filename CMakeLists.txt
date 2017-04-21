@@ -26,6 +26,7 @@ set(HDRHISTOGRAM_LIBS
     ${HDRHISTOGRAM_BINARY_DIR}/src/${CMAKE_STATIC_LIBRARY_PREFIX}hdr_histogram_static${CMAKE_STATIC_LIBRARY_SUFFIX}
     )
 
+include_directories(${HDRHISTOGRAM_SOURCE_DIR}/src)
 
 set(SOURCE
     src/packet.c
@@ -50,7 +51,8 @@ add_executable(
     packet
     src/main.c
     ${SOURCE} ${HEADERS})
-target_link_libraries(packet ${CMAKE_THREAD_LIBS_INIT} rt)
+target_include_directories(packet PRIVATE ${HDRHISTOGRAM_SOURCE_DIR}/src)
+target_link_libraries(packet ${HDRHISTOGRAM_LIBS} ${CMAKE_THREAD_LIBS_INIT} rt m)
 
 add_executable(directio src/directio.c)
 
@@ -64,7 +66,7 @@ add_executable(
     test/utils.h
     ${SOURCE} ${HEADERS})
 target_include_directories(fix_extract_fix_messages_test PRIVATE src)
-target_link_libraries(fix_extract_fix_messages_test ${CMAKE_THREAD_LIBS_INIT} rt)
+target_link_libraries(fix_extract_fix_messages_test ${HDRHISTOGRAM_LIBS} ${CMAKE_THREAD_LIBS_INIT} rt m)
 
 add_executable(
     spsc_rb_test src/spsc_rb.h src/spsc_rb.c test/spsc_rb_test.c

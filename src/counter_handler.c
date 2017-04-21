@@ -35,7 +35,7 @@ void* poll_counters(void* context)
         }
 
         printf(
-            "Invalid checksums: %d, corrupt messages: %d\n",
+            "Invalid checksums: %ld, corrupt messages: %ld\n",
             aggregate_counters.invalid_checksums,
             aggregate_counters.corrupt_messages);
     }

@@ -1,11 +1,16 @@
+#define _GNU_SOURCE
+
 #include <stdlib.h>
+#include <time.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <hdr_histogram.h>
 
 #include "spsc_rb.h"
+#include "counter_handler.h"
 #include "packet.h"
 #include "fix.h"
 #include "fixparser.h"
@@ -77,7 +82,7 @@ static bool is_complement(int type_a, int type_b)
     }
 }
 
-void calculate_latency(khash_t(latency)* latency_table, const fix_message_summary_t* msg)
+void calculate_latency(kh_latency_t* latency_table, struct hdr_histogram* histogram, fix_message_summary_t* msg)
 {
     int ret;
     khint_t k;
@@ -103,6 +108,8 @@ void calculate_latency(khash_t(latency)* latency_table, const fix_message_summar
             kh_del(latency, latency_table, k);
             free(latency_record);
 
+            hdr_record_value(histogram, latency_nsec);
+
             printf("Found, latency = %ld\n", latency_nsec);
         }
     }
@@ -125,9 +132,24 @@ void* poll_ring_buffers(void* context)
 {
     buffer_vec_t* buffer_vec = (buffer_vec_t*) context;
     khash_t(latency)* latency_table = kh_init(latency);
+    struct timespec last_timestamp;
+    struct timespec curr_timestamp;
+    struct hdr_histogram* histogram;
+    hdr_init(1, INT64_C(10000000000), 2, &histogram);
+
+    clock_gettime(CLOCK_MONOTONIC, &last_timestamp);
 
     while (!sigint)
     {
+        clock_gettime(CLOCK_MONOTONIC, &curr_timestamp);
+
+        if (curr_timestamp.tv_sec > last_timestamp.tv_sec)
+        {
+            printf("Max latency: %ld\n", hdr_max(histogram));
+            last_timestamp = curr_timestamp;
+            hdr_reset(histogram);
+        }
+
         for (int i = 0; i < buffer_vec->len; i++)
         {
             spsc_rb_t* rb = buffer_vec->ring_buffers[i];
@@ -138,7 +160,7 @@ void* poll_ring_buffers(void* context)
             {
                 fix_message_summary_t* msg = (fix_message_summary_t*) record->data;
 
-                calculate_latency(latency_table, msg);
+                calculate_latency(latency_table, histogram, msg);
 
                 spsc_rb_release(rb, record);
             }
