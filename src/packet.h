@@ -9,7 +9,7 @@ typedef struct
 {
     int thread_num;
     int fanout_id;
-    char* interface;
+    const char* interface;
     int port;
     struct boyermoore_s* matcher;
     vmars_spsc_rb_t* rb;

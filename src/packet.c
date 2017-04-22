@@ -32,6 +32,7 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <netdb.h>
+#include <errno.h>
 
 #include "common.h"
 #include "simpleboyermoore.h"
@@ -77,7 +78,7 @@ void vmars_packet_sighandler(int num)
 }
 #pragma clang diagnostic pop
 
-static int setup_socket(struct ring* ring, char* netdev)
+static int setup_socket(struct ring* ring, const char* netdev)
 {
     int err, i, fd, v = TPACKET_V3;
     struct sockaddr_ll ll;
@@ -148,7 +149,7 @@ static int setup_socket(struct ring* ring, char* netdev)
     err = setsockopt(fd, SOL_PACKET, PACKET_FANOUT, &ring->fanout_id, sizeof(ring->fanout_id));
     if (err)
     {
-        perror("Failed to set fanout option for socket");
+        printf("Failed to set fanout option for socket, interface: %s, error: %s\n", netdev, strerror(errno));
         return -1;
     }
 
@@ -304,6 +305,10 @@ void* vmars_poll_socket(void* context)
     struct boyermoore_s matcher;
     
     vmars_capture_context_t* ctx = (vmars_capture_context_t*) context;
+
+    printf(
+        "[%d] Starting capture thread on interface: %s, fanout id: %d\n",
+        ctx->thread_num, ctx->interface, ctx->fanout_id);
     
     boyermoore_init("8=FIX.4.", &matcher);
     memset(&ring, 0, sizeof(ring));

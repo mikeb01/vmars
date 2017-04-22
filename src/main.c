@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -5,6 +7,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <string.h>
 
 #include "common.h"
 #include "spsc_rb.h"
@@ -31,6 +34,40 @@ static struct option long_options[] =
     { 0, 0, 0, 0}
 };
 
+static vmars_str_vec_t split_interfaces(const char* interfaces)
+{
+    vmars_str_vec_t vec;
+
+    char* dup_ifaces = strdup(interfaces);
+
+    int count = 0;
+
+    char* token = strtok(dup_ifaces, ",");
+    while (NULL != token)
+    {
+        count++;
+        token = strtok(NULL, ",");
+    }
+
+    vec.strings = malloc(count * sizeof(char*));
+    vec.len = count;
+
+    free(dup_ifaces);
+
+    dup_ifaces = strdup(interfaces);
+
+    int i = 0;
+    token = strtok(dup_ifaces, ",");
+    while (NULL != token)
+    {
+        vec.strings[i] = token;
+        token = strtok(NULL, ",");
+        i++;
+    }
+
+    return vec;
+}
+
 int main(int argc, char** argp)
 {
     int opt;
@@ -38,13 +75,15 @@ int main(int argc, char** argp)
     vmars_latency_handler_context_t latency_context;
     vmars_monitoring_counters_vec_t counters_vec;
 
+    memset(&config, 0, sizeof(vmars_config_t));
+
     int option_index = 0;
     while ((opt = getopt_long(argc, argp, "i:t:c:h:p:", long_options, &option_index)) != -1)
     {
         switch (opt)
         {
             case 'i':
-                config.interface = optarg;
+                config.interfaces = optarg;
                 break;
             case 't':
                 config.num_threads = atoi(optarg);
@@ -72,7 +111,7 @@ int main(int argc, char** argp)
         fprintf(stderr, "Number of threads (-n) must be positive\n");
         exit(EXIT_FAILURE);
     }
-    if (NULL == config.interface)
+    if (NULL == config.interfaces)
     {
         fprintf(stderr, "Must specify an interface (-i)\n");
         exit(EXIT_FAILURE);
@@ -84,49 +123,60 @@ int main(int argc, char** argp)
     }
 
     printf(
-        "Interface: %s, port: %d, num threads: %d, udp host: %s, udp port: %d\n",
-        config.interface, config.capture_port, config.num_threads, config.udp_host, config.udp_port);
+        "Interfaces: %s, port: %d, num threads: %d, udp host: %s, udp port: %d\n",
+        config.interfaces, config.capture_port, config.num_threads, config.udp_host, config.udp_port);
 
-    pthread_t* polling_threads = calloc((size_t) config.num_threads, sizeof(pthread_t));
+    const vmars_str_vec_t interfaces = split_interfaces(config.interfaces);
+    int total_threads = interfaces.len * config.num_threads;
+
+    pthread_t* polling_threads = calloc((size_t) total_threads, sizeof(pthread_t));
     pthread_t* latency_thread = calloc(1, sizeof(pthread_t));
     pthread_t* counters_thread = calloc(1, sizeof(pthread_t));
 
-    vmars_capture_context_t* thread_contexts = calloc((size_t) config.num_threads, sizeof(vmars_capture_context_t));
+    vmars_capture_context_t* thread_contexts = calloc((size_t) total_threads, sizeof(vmars_capture_context_t));
 
     latency_context.config = &config;
-    latency_context.buffer_vec.ring_buffers = calloc((size_t) config.num_threads, sizeof(vmars_spsc_rb_t*));
-    latency_context.buffer_vec.len = config.num_threads;
+    latency_context.buffer_vec.ring_buffers = calloc((size_t) total_threads, sizeof(vmars_spsc_rb_t*));
+    latency_context.buffer_vec.len = total_threads;
 
-    counters_vec.counters = calloc((size_t) config.num_threads, sizeof(vmars_spsc_rb_t*));
-    counters_vec.len = config.num_threads;
+    counters_vec.counters = calloc((size_t) total_threads, sizeof(vmars_spsc_rb_t*));
+    counters_vec.len = total_threads;
 
     signal(SIGINT, root_sighandler);
     int fanout_id = 1111;
 
-    for (int i = 0; i < config.num_threads; i++)
+    for (int j = 0; j < interfaces.len; j++)
     {
-        thread_contexts[i].thread_num = i;
-        thread_contexts[i].fanout_id = fanout_id;
-        thread_contexts[i].interface = argp[1];
-        thread_contexts[i].port = config.capture_port;
-        thread_contexts[i].rb = (vmars_spsc_rb_t*) calloc(1, sizeof(vmars_spsc_rb_t));
+        const char* interface = interfaces.strings[j];
 
-        if (thread_contexts[i].rb == NULL)
+        for (int i = 0; i < config.num_threads; i++)
         {
-            fprintf(stderr, "Failed to allocate ring buffer.\n");
-            exit(EXIT_FAILURE);
+            int base = j * config.num_threads;
+            const int idx = base + i;
+
+            thread_contexts[idx].thread_num = idx;
+            thread_contexts[idx].fanout_id = fanout_id * (j + 1);
+            thread_contexts[idx].interface = interface;
+            thread_contexts[idx].port = config.capture_port;
+            thread_contexts[idx].rb = (vmars_spsc_rb_t*) calloc(1, sizeof(vmars_spsc_rb_t));
+
+            if (thread_contexts[idx].rb == NULL)
+            {
+                fprintf(stderr, "Failed to allocate ring buffer.\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if (vmars_spsc_rb_init(thread_contexts[idx].rb, 4096) < 0)
+            {
+                fprintf(stderr, "Failed to init ring buffer.\n");
+                exit(EXIT_FAILURE);
+            }
+
+            latency_context.buffer_vec.ring_buffers[idx] = thread_contexts[idx].rb;
+            counters_vec.counters[idx] = &thread_contexts[idx].counters;
+
+            pthread_create(&polling_threads[idx], NULL, vmars_poll_socket, &thread_contexts[idx]);
         }
-
-        if (vmars_spsc_rb_init(thread_contexts[i].rb, 4096) < 0)
-        {
-            fprintf(stderr, "Failed to init ring buffer.\n");
-            exit(EXIT_FAILURE);
-        }
-
-        latency_context.buffer_vec.ring_buffers[i] = thread_contexts[i].rb;
-        counters_vec.counters[i] = &thread_contexts[i].counters;
-
-        pthread_create(&polling_threads[i], NULL, vmars_poll_socket, &thread_contexts[i]);
     }
 
     pthread_create(latency_thread, NULL, poll_ring_buffers, &latency_context);
