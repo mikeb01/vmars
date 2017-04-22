@@ -31,12 +31,14 @@ void* vmars_poll_counters(void* context)
 
         for (int i = 0; i < ctx->counters_vec.len; i++)
         {
+            aggregate_counters.valid_messages += ctx->counters_vec.counters[i]->valid_messages;
             aggregate_counters.invalid_checksums += ctx->counters_vec.counters[i]->invalid_checksums;
             aggregate_counters.corrupt_messages += ctx->counters_vec.counters[i]->corrupt_messages;
         }
 
         printf(
-            "Invalid checksums: %ld, corrupt messages: %ld\n",
+            "Valid fix messages: %ld, invalid checksums: %ld, corrupt messages: %ld\n",
+            aggregate_counters.valid_messages,
             aggregate_counters.invalid_checksums,
             aggregate_counters.corrupt_messages);
     }

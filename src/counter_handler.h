@@ -9,6 +9,7 @@ typedef struct
 {
     int64_t invalid_checksums;
     int64_t corrupt_messages;
+    int64_t valid_messages;
 } vmars_monitoring_counters_t;
 
 typedef struct

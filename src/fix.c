@@ -229,12 +229,19 @@ void vmars_extract_fix_messages(
             if (result > 0)
             {
                 process_for_latency_measurement(ctx, tv_sec, tv_nsec, &fix_details);
+                int64_t c = ctx->counters.valid_messages;
+                __atomic_store_n(&ctx->counters.valid_messages, c + 1, __ATOMIC_RELEASE);
             }
             else if (result == FIX_EMESSAGETOOSHORT)
             {
+                int64_t c = ctx->counters.corrupt_messages;
+                __atomic_store_n(&ctx->counters.corrupt_messages, c + 1, __ATOMIC_RELEASE);
+                // Copy data to buffer keyed by rxhash.
+            }
+            else if (result == FIX_ECHECKSUMINVALID)
+            {
                 int64_t c = ctx->counters.invalid_checksums;
                 __atomic_store_n(&ctx->counters.invalid_checksums, c + 1, __ATOMIC_RELEASE);
-                // Copy data to buffer keyed by rxhash.
             }
             else
             {
