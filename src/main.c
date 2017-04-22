@@ -24,6 +24,19 @@ void root_sighandler(int num)
     vmars_counters_sighandler(num);
 }
 
+const char* USAGE =
+    "VMars FIX packet probe \n"
+    "Usage: vmars [OPTIONS] \n"
+    "\n"
+    "Options:\n"
+    "  -i  --interface name[,name]     A list of interfaces to probe for messages.\n"
+    "                                  E.g. -i eth0,eth1.\n"
+    "  -t  --num-threads num           Number of polling threads per interface.\n"
+    "  -c  --capture-port num          The port to capture messages on.\n"
+    "  -h  --udp-host ip-string        IP address to send latency updates to.\n"
+    "  -p  --udp-host num              UDP port to send lantency updates to.\n"
+    "\n";
+
 static struct option long_options[] =
 {
     { "interface", required_argument, NULL, 'i' },
@@ -101,24 +114,39 @@ int main(int argc, char** argp)
                 break;
 
             default: /* '?' */
-                fprintf(stderr, "Usage: %s [-t nsecs] [-n ] name\n", argp[0]);
+                fprintf(stderr, "%s", USAGE);
                 exit(EXIT_FAILURE);
         }
     }
 
     if (config.num_threads < 1)
     {
-        fprintf(stderr, "Number of threads (-n) must be positive\n");
+        fprintf(stderr, "Number of threads must be positive\n");
+        fprintf(stderr, "%s", USAGE);
         exit(EXIT_FAILURE);
     }
     if (NULL == config.interfaces)
     {
-        fprintf(stderr, "Must specify an interface (-i)\n");
+        fprintf(stderr, "Must specify an interface or interfaces\n");
+        fprintf(stderr, "%s", USAGE);
         exit(EXIT_FAILURE);
     }
     if (-1 == config.capture_port)
     {
-        fprintf(stderr, "Must specify a port (-p)\n");
+        fprintf(stderr, "Must specify a capture port\n");
+        fprintf(stderr, "%s", USAGE);
+        exit(EXIT_FAILURE);
+    }
+    if (NULL == config.udp_host)
+    {
+        fprintf(stderr, "Must specify a udp host\n");
+        fprintf(stderr, "%s", USAGE);
+        exit(EXIT_FAILURE);
+    }
+    if (0 == config.udp_port)
+    {
+        fprintf(stderr, "Must specify a udp port\n");
+        fprintf(stderr, "%s", USAGE);
         exit(EXIT_FAILURE);
     }
 
