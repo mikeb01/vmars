@@ -222,8 +222,8 @@ static void walk_block(vmars_capture_context_t* ctx, struct block_desc* pbd)
         ppd = (struct tpacket3_hdr*) ((uint8_t*) ppd + ppd->tp_next_offset);
     }
 
-    packets_total += num_pkts;
-    bytes_total += bytes;
+    int64_t c = ctx->counters.bytes_total;
+    __atomic_store_n(&ctx->counters.bytes_total, c + 1, __ATOMIC_RELEASE);
 }
 
 static void flush_block(struct block_desc* pbd)
@@ -236,23 +236,6 @@ static void teardown_socket(struct ring* ring, int fd)
     munmap(ring->map, ring->req.tp_block_size * ring->req.tp_block_nr);
     free(ring->rd);
     close(fd);
-}
-
-void print_stats(int fd)
-{
-    struct tpacket_stats_v3 stats;
-    socklen_t len = sizeof(stats);
-    int err = getsockopt(fd, SOL_PACKET, PACKET_STATISTICS, &stats, &len);
-    if (err < 0)
-    {
-        perror("getsockopt");
-        pthread_exit(NULL);
-    }
-
-    fflush(stdout);
-    printf("\nReceived %u packets, %lu bytes, %u dropped, freeze_q_cnt: %u\n",
-           stats.tp_packets, bytes_total, stats.tp_drops,
-           stats.tp_freeze_q_cnt);
 }
 
 #pragma clang diagnostic push
@@ -283,11 +266,12 @@ void* vmars_poll_socket(void* context)
         pthread_exit(NULL);
     }
 
+    __atomic_store_n(&ctx->counters.fd, fd, __ATOMIC_SEQ_CST);
+
     memset(&pfd, 0, sizeof(pfd));
     pfd.fd = fd;
     pfd.events = POLLIN | POLLERR;
     pfd.revents = 0;
-    int64_t total_blocks = 0;
 
     while (likely(!sigint))
     {
@@ -302,12 +286,7 @@ void* vmars_poll_socket(void* context)
         walk_block(ctx, pbd);
         flush_block(pbd);
         block_num = (block_num + 1) % blocks;
-        total_blocks++;
     }
-
-    printf("[%d] total blocks: %"PRId64"\n", ctx->thread_num, total_blocks);
-
-    print_stats(fd);
 
     teardown_socket(&ring, fd);
 
