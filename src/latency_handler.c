@@ -115,8 +115,6 @@ void calculate_latency(kh_latency_t* latency_table, struct hdr_histogram* histog
             free(latency_record);
 
             hdr_record_value(histogram, latency_nsec);
-
-            printf("Found, latency = %ld\n", latency_nsec);
         }
     }
     else
@@ -153,7 +151,6 @@ void* poll_ring_buffers(void* context)
 
         if (curr_timestamp.tv_sec > last_timestamp.tv_sec)
         {
-            printf("Max latency: %ld\n", hdr_max(histogram));
             jodie_server.logGauge("vmars.latency.max", hdr_max(histogram), curr_timestamp.tv_sec * 1000);
             jodie_server.logGauge("vmars.latency.50", hdr_value_at_percentile(histogram, 50), curr_timestamp.tv_sec * 1000);
             jodie_server.logGauge("vmars.latency.99", hdr_value_at_percentile(histogram, 99), curr_timestamp.tv_sec * 1000);

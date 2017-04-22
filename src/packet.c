@@ -173,18 +173,6 @@ static int setup_socket(struct ring* ring, const char* netdev)
     return fd;
 }
 
-static void prettify_fix_message(char* msg, size_t len)
-{
-    for (size_t i = 0; i < len; i++)
-    {
-        if (msg[i] == '\1')
-        {
-            msg[i] = '|';
-        }
-    }
-}
-
-
 static void display(vmars_capture_context_t* ctx, struct tpacket3_hdr* ppd)
 {
     struct ethhdr* eth = (struct ethhdr*) ((uint8_t*) ppd + ppd->tp_mac);
@@ -216,32 +204,6 @@ static void display(vmars_capture_context_t* ctx, struct tpacket3_hdr* ppd)
     }
 
     vmars_extract_fix_messages(ctx, ppd->tp_sec, ppd->tp_nsec, data_ptr, data_len);
-
-    size_t copy_len = data_len < 255 ? data_len : 255;
-
-    strncpy(data, data_ptr, copy_len);
-    data[copy_len] = '\0';
-    prettify_fix_message(data, copy_len);
-
-    struct sockaddr_in ss, sd;
-    char sbuff[NI_MAXHOST], dbuff[NI_MAXHOST];
-
-    memset(&ss, 0, sizeof(ss));
-    ss.sin_family = PF_INET;
-    ss.sin_addr.s_addr = ip->saddr;
-    getnameinfo((struct sockaddr*) &ss, sizeof(ss),
-                sbuff, sizeof(sbuff), NULL, 0, NI_NUMERICHOST);
-
-    memset(&sd, 0, sizeof(sd));
-    sd.sin_family = PF_INET;
-    sd.sin_addr.s_addr = ip->daddr;
-    getnameinfo((struct sockaddr*) &sd, sizeof(sd),
-                dbuff, sizeof(dbuff), NULL, 0, NI_NUMERICHOST);
-
-    printf(
-        "[%d] %s:%d -> %s:%d, rxhash: 0x%x, %d:%09d, data: %s\n",
-        ctx->thread_num, sbuff, src_port, dbuff, dst_port, ppd->hv1.tp_rxhash,
-        ppd->tp_sec, ppd->tp_nsec, data);
 }
 
 static void walk_block(vmars_capture_context_t* ctx, struct block_desc* pbd)
