@@ -73,7 +73,7 @@ void* vmars_poll_counters(void* context)
             aggregate_counters.corrupt_messages);
 
         printf(
-            "Bytes: %ld, packets: %ld, drops: %ld, freeze-q-cnt: %ld\n",
+            "Bytes: %ld, packets: %d, drops: %d, freeze-q-cnt: %d\n",
             aggregate_counters.bytes_total,
             stats.tp_packets,
             stats.tp_drops,

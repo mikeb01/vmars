@@ -16,7 +16,10 @@ typedef struct
 
 void vmars_extract_fix_messages(
     vmars_capture_context_t* ctx,
-    uint32_t tv_sec, uint32_t tv_nsec,
-    const char* data_ptr, size_t data_len);
+    int32_t rxhash,
+    unsigned int tv_sec,
+    unsigned int tv_nsec,
+    const char* data_ptr,
+    size_t data_len);
 
 #endif //PACKET_MMAP_FIX_H

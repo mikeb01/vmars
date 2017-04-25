@@ -15,7 +15,7 @@
 static void verify_single_message(vmars_capture_context_t* ptr, const char* fix_message, msg_type_t msg_type, const char* key)
 {
     char* buf = fixify(fix_message);
-    vmars_extract_fix_messages(ptr, 1, 2, buf, strlen(buf));
+    vmars_extract_fix_messages(ptr, 9999, 1, 2, buf, strlen(buf));
 
     const vmars_rb_record_t* msg = vmars_spsc_rb_poll(ptr->rb);
 
@@ -31,6 +31,36 @@ static void verify_single_message(vmars_capture_context_t* ptr, const char* fix_
     vmars_spsc_rb_release(ptr->rb, msg);
 
     free(buf);
+}
+
+static void verify_message_split(
+    vmars_capture_context_t* ptr,
+    const char* part_a,
+    const char* part_b,
+    msg_type_t msg_type,
+    const char* key)
+{
+    char* buf_a = fixify(part_a);
+    char* buf_b = fixify(part_b);
+
+    vmars_extract_fix_messages(ptr, 9999, 1, 2, buf_a, strlen(buf_a));
+    vmars_extract_fix_messages(ptr, 9999, 1, 2, buf_b, strlen(buf_b));
+
+    const vmars_rb_record_t* msg = vmars_spsc_rb_poll(ptr->rb);
+
+    assert(msg != NULL);
+    assert(msg->length != 0);
+
+    const vmars_fix_message_summary_t* summary = (vmars_fix_message_summary_t*) msg->data;
+
+    assert(summary->msg_type == msg_type);
+    assert(summary->key_len == strlen(key));
+    assert(strncmp(summary->key, key, strlen(key)) == 0);
+
+    vmars_spsc_rb_release(ptr->rb, msg);
+
+    free(buf_a);
+    free(buf_b);
 }
 
 static void parse_new_order_single(vmars_capture_context_t* ptr)
@@ -78,6 +108,14 @@ void parse_trace_request(vmars_capture_context_t* ptr)
         MSG_TYPE_TRACE_REQ, "traceUs18bdsdnueybod|FIX-API|5000|");
 }
 
+void parse_split_trace_request(vmars_capture_context_t* ptr)
+{
+    verify_message_split(
+        ptr,
+        "8=FIX.4.2|9=79|35=xr|34=", "4|49=traceUs18bdsdnueybod|52=20170413-03:25:49.397|56=FIX-API|11=5000|10=201|",
+        MSG_TYPE_TRACE_REQ, "traceUs18bdsdnueybod|FIX-API|5000|");
+}
+
 void parse_trace_response(vmars_capture_context_t* ptr)
 {
     verify_single_message(
@@ -108,5 +146,6 @@ int main()
     parse_mass_quote(&ctx);
     parse_mass_quote_ack(&ctx);
     parse_trace_request(&ctx);
+    parse_split_trace_request(&ctx);
     parse_trace_response(&ctx);
 }
