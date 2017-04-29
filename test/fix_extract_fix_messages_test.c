@@ -100,6 +100,19 @@ void parse_trace_request(vmars_capture_context_t* ptr)
         MSG_TYPE_TRACE_REQ, "traceUs18bdsdnueybod|FIX-API|5000|");
 }
 
+void parse_3_messages(vmars_capture_context_t* ptr)
+{
+    push_message(
+        ptr,
+        "8=FIX.4.2|9=79|35=xr|34=4|49=traceUs18bdsdnueybod|52=20170413-03:25:49.397|56=FIX-API|11=5000|10=201|"
+        "8=FIX.4.2|9=235|35=xs|49=FIX-API|56=traceUs18bdsdnueybod|34=4|52=20170413-03:25:49.401|11=5000|9100=25704866843180|9101=25704867064367|9102=25704867298900|9103=25704868440546|9104=1492053949399|9105=1492053949400|9106=1492053949400|9107=1492053949401|10=093|"
+        "8=FIX.4.2|9=157|35=b|49=FIX-API|56=baseUni1ds7nwwsj62ob|34=4|52=20170413-01:22:09.613|297=0|117=clIdE4c]oav3SF7bg\"L|296=1|302=1|311=instrument1psh813x11j3i|309=180387|305=8|10=019|");
+
+    verify_latency_event(ptr, MSG_TYPE_TRACE_REQ, "traceUs18bdsdnueybod|FIX-API|5000|");
+    verify_latency_event(ptr, MSG_TYPE_TRACE_RSP, "traceUs18bdsdnueybod|FIX-API|5000|");
+    verify_latency_event(ptr, MSG_TYPE_MASS_QUOTE_ACK,  "baseUni1ds7nwwsj62ob|FIX-API|clIdE4c]oav3SF7bg\"L|instrument1psh813x11j3i");
+}
+
 void parse_split_trace_request(vmars_capture_context_t* ptr)
 {
     verify_message_split(
@@ -153,4 +166,5 @@ int main()
     parse_split_trace_request(&ctx);
     parse_split_2_trace_msgs(&ctx);
     parse_trace_response(&ctx);
+    parse_3_messages(&ctx);
 }
