@@ -12,11 +12,15 @@
 #include "fix.h"
 #include "utils.h"
 
-static void verify_single_message(vmars_capture_context_t* ptr, const char* fix_message, msg_type_t msg_type, const char* key)
+void push_message(vmars_capture_context_t* ptr, const char* fix_message)
 {
     char* buf = fixify(fix_message);
     vmars_extract_fix_messages(ptr, 9999, 1, 2, buf, strlen(buf));
+    free(buf);
+}
 
+void verify_latency_event(const vmars_capture_context_t* ptr, msg_type_t msg_type, const char* key)
+{
     const vmars_rb_record_t* msg = vmars_spsc_rb_poll(ptr->rb);
 
     assert(msg != NULL);
@@ -29,8 +33,13 @@ static void verify_single_message(vmars_capture_context_t* ptr, const char* fix_
     assert(strncmp(summary->key, key, strlen(key)) == 0);
 
     vmars_spsc_rb_release(ptr->rb, msg);
+}
 
-    free(buf);
+static void verify_single_message(vmars_capture_context_t* ptr, const char* fix_message, msg_type_t msg_type, const char* key)
+{
+    push_message(ptr, fix_message);
+    verify_latency_event(ptr, msg_type, key);
+
 }
 
 static void verify_message_split(
@@ -40,27 +49,10 @@ static void verify_message_split(
     msg_type_t msg_type,
     const char* key)
 {
-    char* buf_a = fixify(part_a);
-    char* buf_b = fixify(part_b);
+    push_message(ptr, part_a);
+    push_message(ptr, part_b);
 
-    vmars_extract_fix_messages(ptr, 9999, 1, 2, buf_a, strlen(buf_a));
-    vmars_extract_fix_messages(ptr, 9999, 1, 2, buf_b, strlen(buf_b));
-
-    const vmars_rb_record_t* msg = vmars_spsc_rb_poll(ptr->rb);
-
-    assert(msg != NULL);
-    assert(msg->length != 0);
-
-    const vmars_fix_message_summary_t* summary = (vmars_fix_message_summary_t*) msg->data;
-
-    assert(summary->msg_type == msg_type);
-    assert(summary->key_len == strlen(key));
-    assert(strncmp(summary->key, key, strlen(key)) == 0);
-
-    vmars_spsc_rb_release(ptr->rb, msg);
-
-    free(buf_a);
-    free(buf_b);
+    verify_latency_event(ptr, msg_type, key);
 }
 
 static void parse_new_order_single(vmars_capture_context_t* ptr)
@@ -116,6 +108,18 @@ void parse_split_trace_request(vmars_capture_context_t* ptr)
         MSG_TYPE_TRACE_REQ, "traceUs18bdsdnueybod|FIX-API|5000|");
 }
 
+void parse_split_2_trace_msgs(vmars_capture_context_t* ptr)
+{
+    push_message(ptr, "8=FIX.4.2|9=79|35=xr|34=");
+    push_message(
+        ptr,
+        "4|49=traceUs18bdsdnueybod|52=20170413-03:25:49.397|56=FIX-API|11=5000|10=201|"
+        "8=FIX.4.2|9=235|35=xs|49=FIX-API|56=traceUs18bdsdnueybod|34=4|52=20170413-03:25:49.401|11=5000|9100=25704866843180|9101=25704867064367|9102=25704867298900|9103=25704868440546|9104=1492053949399|9105=1492053949400|9106=1492053949400|9107=1492053949401|10=093|");
+
+    verify_latency_event(ptr, MSG_TYPE_TRACE_REQ, "traceUs18bdsdnueybod|FIX-API|5000|");
+    verify_latency_event(ptr, MSG_TYPE_TRACE_RSP, "traceUs18bdsdnueybod|FIX-API|5000|");
+}
+
 void parse_trace_response(vmars_capture_context_t* ptr)
 {
     verify_single_message(
@@ -147,5 +151,6 @@ int main()
     parse_mass_quote_ack(&ctx);
     parse_trace_request(&ctx);
     parse_split_trace_request(&ctx);
+    parse_split_2_trace_msgs(&ctx);
     parse_trace_response(&ctx);
 }

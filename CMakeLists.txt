@@ -75,13 +75,14 @@ add_executable(
 target_include_directories(spsc_rb_test PRIVATE src)
 
 add_executable(
-    fixparser_parse
-    test/fixparser_parse.c
+    fixparser_parse_test
+    test/fixparser_parse_test.c
     test/utils.h
     ${SOURCE} ${HEADERS}
 )
-target_include_directories(fixparser_parse PRIVATE src)
+target_include_directories(fixparser_parse_test PRIVATE src)
 
 add_test(fix_exctract_fix_messages fix_extract_fix_messages_test)
 add_test(spsc_rb spsc_rb_test)
 add_test(simpleboyermoore simpleboyermoore_test)
+add_test(fixparser_parse fixparser_test_parse)

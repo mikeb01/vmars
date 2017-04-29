@@ -333,6 +333,9 @@ void vmars_extract_fix_messages(
     // data starts with messgage fragment
     if (curr_fix_messsage != buf)
     {
+        unsigned long fragment_len = (curr_fix_messsage) ? curr_fix_messsage - buf : data_len;
+        buf_remaining -= fragment_len;
+
         fragment_t* fragment = get_fragment(ctx, rxhash);
         if (NULL == fragment)
         {
@@ -340,11 +343,10 @@ void vmars_extract_fix_messages(
         }
         else
         {
-            unsigned long len = (curr_fix_messsage) ? curr_fix_messsage - buf : data_len;
-            if (fragment->len + len < fragment->capacity)
+            if (fragment->len + fragment_len < fragment->capacity)
             {
-                strncpy(&fragment->s[fragment->len], buf, len);
-                fragment->len += len;
+                strncpy(&fragment->s[fragment->len], buf, fragment_len);
+                fragment->len += fragment_len;
 
                 int result = try_parse_fix_message(ctx, fragment->s, fragment->len, &fix_details);
                 if (result > 0)
@@ -371,7 +373,7 @@ void vmars_extract_fix_messages(
             }
 
             // And now for some pointer math.
-            int fix_message_len = NULL == next_fix_messsage ? (int) data_len : (int) (next_fix_messsage - curr_fix_messsage);
+            int fix_message_len = NULL == next_fix_messsage ? buf_remaining : (int) (next_fix_messsage - curr_fix_messsage);
             buf_remaining -= fix_message_len;
 
             int result = try_parse_fix_message(ctx, curr_fix_messsage, fix_message_len, &fix_details);
@@ -379,7 +381,7 @@ void vmars_extract_fix_messages(
             {
                 process_for_latency_measurement(ctx, tv_sec, tv_nsec, &fix_details);
             }
-            else if (FIX_EMESSAGETOOSHORT)
+            else if (FIX_EMESSAGETOOSHORT == result)
             {
                 put_fragment(ctx, rxhash, curr_fix_messsage, fix_message_len);
             }
