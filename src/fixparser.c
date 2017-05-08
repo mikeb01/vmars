@@ -10,7 +10,7 @@ const int INITIAL_HEADER_LEN = 12;
 const int CHECK_SUM_LEN = 7;
 
 // use SSE instructions
-static inline int validate_checksum(const char* buf, long buf_len, const char* expected)
+static inline int validate_checksum(const char* buf, int buf_len, const char* expected)
 {
     register long int sum = 0;
     register long int ii;
@@ -41,11 +41,11 @@ static inline int validate_checksum(const char* buf, long buf_len, const char* e
     compare = ((expected[0] - '0') * 100) + ((expected[1] - '0') * 10) + (expected[2] - '0');
 
 //    if (fix_parser_debug) printf("validate checksum: expected %s, calculated = %ld\n", expected, (sum & 0xff));
-    return (sum & 0xff) - compare; // modulo 256 and compare
+    return ((int) (sum & 0xff)) - compare; // modulo 256 and compare
 }
 
 
-int parse_fix_message(
+vmars_fix_parse_result vmars_fix_parse_msg(
     const char* buf, int len, void* context,
     void (* startp)(void*, int, int),
     void (* tagp)(void*, int, const char*, int),
@@ -56,7 +56,7 @@ int parse_fix_message(
 
     if (INITIAL_HEADER_LEN > len)
     {
-        return FIX_EMESSAGETOOSHORT;
+        return (vmars_fix_parse_result) { .result = FIX_EMESSAGETOOSHORT, .bytes_consumed = len };
     }
 
     const char* current = buf;
@@ -65,7 +65,7 @@ int parse_fix_message(
     if (strncmp(current, INITIAL_HEADER_42, INITIAL_HEADER_LEN) == 0) fix_type = 42;
     if (strncmp(current, INITIAL_HEADER_44, INITIAL_HEADER_LEN) == 0) fix_type = 44;
 
-    if (fix_type == -1) return -1;
+    if (fix_type == -1) return (vmars_fix_parse_result) { .result = FIX_EINVALIDTYPE, .bytes_consumed = len };
 
     position += INITIAL_HEADER_LEN;
 
@@ -86,18 +86,20 @@ int parse_fix_message(
         }
         else
         {
-            return FIX_ETAGINVALID;
+            return (vmars_fix_parse_result){ .result = FIX_ETAGINVALID, .bytes_consumed = len };
         }
     }
 
     if (0 == msg_len || msg_len > (len - position) - CHECK_SUM_LEN)
     {
-        return FIX_EMESSAGETOOSHORT;
+        return (vmars_fix_parse_result){ .result = FIX_EMESSAGETOOSHORT, .bytes_consumed = len };
     }
+
+    len = msg_len + position + CHECK_SUM_LEN;
 
     if (validate_checksum(&buf[0], msg_len + position, &buf[position + msg_len + 3]) != 0)
     {
-        return FIX_ECHECKSUMINVALID;
+        return (vmars_fix_parse_result){ .result = FIX_ECHECKSUMINVALID, .bytes_consumed = len };
     }
 
     if (NULL != startp)
@@ -122,7 +124,7 @@ int parse_fix_message(
             }
             else
             {
-                return FIX_ETAGINVALID;
+                return (vmars_fix_parse_result){ .result = FIX_ETAGINVALID, .bytes_consumed = len };
             }
         }
 
@@ -142,7 +144,7 @@ int parse_fix_message(
 
         if (valueEndPosition == -1)
         {
-            return FIX_EEMPTYVALUE;
+            return (vmars_fix_parse_result){ .result = FIX_EEMPTYVALUE, .bytes_consumed = len };
         }
 
         (tagp)(context, tag, &buf[valueStartPosition], valueEndPosition - valueStartPosition);
@@ -154,6 +156,6 @@ int parse_fix_message(
         (endp)(context);
     }
 
-    return position;
+    return (vmars_fix_parse_result){ .result = 0, .bytes_consumed = len };
 }
 

@@ -19,7 +19,7 @@ void push_message(vmars_capture_context_t* ptr, const char* fix_message)
     free(buf);
 }
 
-void verify_latency_event(const vmars_capture_context_t* ptr, msg_type_t msg_type, const char* key)
+void verify_latency_event(const vmars_capture_context_t* ptr, vmars_fix_msg_type_t msg_type, const char* key)
 {
     const vmars_rb_record_t* msg = vmars_spsc_rb_poll(ptr->rb);
 
@@ -35,7 +35,7 @@ void verify_latency_event(const vmars_capture_context_t* ptr, msg_type_t msg_typ
     vmars_spsc_rb_release(ptr->rb, msg);
 }
 
-static void verify_single_message(vmars_capture_context_t* ptr, const char* fix_message, msg_type_t msg_type, const char* key)
+static void verify_single_message(vmars_capture_context_t* ptr, const char* fix_message, vmars_fix_msg_type_t msg_type, const char* key)
 {
     push_message(ptr, fix_message);
     verify_latency_event(ptr, msg_type, key);
@@ -46,7 +46,7 @@ static void verify_message_split(
     vmars_capture_context_t* ptr,
     const char* part_a,
     const char* part_b,
-    msg_type_t msg_type,
+    vmars_fix_msg_type_t msg_type,
     const char* key)
 {
     push_message(ptr, part_a);
@@ -133,6 +133,23 @@ void parse_split_2_trace_msgs(vmars_capture_context_t* ptr)
     verify_latency_event(ptr, MSG_TYPE_TRACE_RSP, "traceUs18bdsdnueybod|FIX-API|5000|");
 }
 
+void parse_split_2_trace_request_with_fragment_less_than_header(vmars_capture_context_t* ptr)
+{
+    push_message(ptr, "8=FIX.4.2|9=79|35=xr|34=4|49=traceUs18bdsdnueybod|52=20170413-03:25:49.397|56=FIX-API|11=5000|10=201|8=FIX");
+    push_message(ptr, ".4.2|9=79|35=xr|34=4|49=traceUs18bdsdnueybod|52=20170413-03:25:49.397|56=FIX-API|11=5000|10=201|");
+
+    verify_latency_event(ptr, MSG_TYPE_TRACE_REQ, "traceUs18bdsdnueybod|FIX-API|5000|");
+    verify_latency_event(ptr, MSG_TYPE_TRACE_REQ, "traceUs18bdsdnueybod|FIX-API|5000|");
+}
+
+void parse_split_1_trace_request_with_fragment_less_than_header(vmars_capture_context_t* ptr)
+{
+    push_message(ptr, "8=FIX");
+    push_message(ptr, ".4.2|9=79|35=xr|34=4|49=traceUs18bdsdnueybod|52=20170413-03:25:49.397|56=FIX-API|11=5000|10=201|");
+
+    verify_latency_event(ptr, MSG_TYPE_TRACE_REQ, "traceUs18bdsdnueybod|FIX-API|5000|");
+}
+
 void parse_trace_response(vmars_capture_context_t* ptr)
 {
     verify_single_message(
@@ -167,4 +184,6 @@ int main()
     parse_split_2_trace_msgs(&ctx);
     parse_trace_response(&ctx);
     parse_3_messages(&ctx);
+    parse_split_2_trace_request_with_fragment_less_than_header(&ctx);
+//    parse_split_1_trace_request_with_fragment_less_than_header(&ctx);
 }

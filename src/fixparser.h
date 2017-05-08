@@ -15,6 +15,7 @@
 #define FIX_ECHECKSUMINVALID -2
 #define FIX_ETAGINVALID -3
 #define FIX_EEMPTYVALUE -4
+#define FIX_EINVALIDTYPE -5
 
 #define INT_OF(x, y) (((int) x << 8) + y)
 
@@ -26,10 +27,16 @@ typedef enum
     MSG_TYPE_MASS_QUOTE_ACK = (int) 'b',
     MSG_TYPE_TRACE_REQ = INT_OF('x', 'r'),
     MSG_TYPE_TRACE_RSP = INT_OF('x', 's')
-} msg_type_t;
+} vmars_fix_msg_type_t;
+
+typedef struct
+{
+    int result;
+    int bytes_consumed;
+} vmars_fix_parse_result;
 
 // prototypes
-int parse_fix_message(
+vmars_fix_parse_result vmars_fix_parse_msg(
     const char* buf, int len,
     void* context,
     void (* startp)(void*, int, int),

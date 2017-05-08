@@ -284,7 +284,7 @@ static void remove_fragment(vmars_capture_context_t* ctx, int32_t rxhash)
     }
 }
 
-int try_parse_fix_message(
+vmars_fix_parse_result try_parse_fix_message(
     vmars_capture_context_t* ctx,
     const char* fix_messsage,
     int fix_message_len,
@@ -292,17 +292,17 @@ int try_parse_fix_message(
 {
     memset(fix_details, 0, sizeof(fix_details_t));
 
-    int result = parse_fix_message(fix_messsage, fix_message_len, fix_details, NULL, handle_tag, NULL);
+    vmars_fix_parse_result result = vmars_fix_parse_msg(fix_messsage, fix_message_len, fix_details, NULL, handle_tag, NULL);
 
-    if (result > 0)
+    if (result.result == 0)
     {
         atomic_release_increment(&ctx->counters.valid_messages);
     }
-    else if (result == FIX_EMESSAGETOOSHORT)
+    else if (result.result == FIX_EMESSAGETOOSHORT)
     {
         // No-op
     }
-    else if (result == FIX_ECHECKSUMINVALID)
+    else if (result.result == FIX_ECHECKSUMINVALID)
     {
         atomic_release_increment(&ctx->counters.invalid_checksums);
     }
@@ -348,13 +348,13 @@ void vmars_extract_fix_messages(
                 strncpy(&fragment->s[fragment->len], buf, fragment_len);
                 fragment->len += fragment_len;
 
-                int result = try_parse_fix_message(ctx, fragment->s, fragment->len, &fix_details);
-                if (result > 0)
+                vmars_fix_parse_result result = try_parse_fix_message(ctx, fragment->s, fragment->len, &fix_details);
+                if (result.result == 0)
                 {
                     process_for_latency_measurement(ctx, tv_sec, tv_nsec, &fix_details);
                 }
 
-                if (result != FIX_EMESSAGETOOSHORT)
+                if (result.result != FIX_EMESSAGETOOSHORT)
                 {
                     remove_fragment(ctx, rxhash);
                 }
@@ -374,14 +374,15 @@ void vmars_extract_fix_messages(
 
             // And now for some pointer math.
             int fix_message_len = NULL == next_fix_messsage ? buf_remaining : (int) (next_fix_messsage - curr_fix_messsage);
-            buf_remaining -= fix_message_len;
 
-            int result = try_parse_fix_message(ctx, curr_fix_messsage, fix_message_len, &fix_details);
-            if (result > 0)
+            vmars_fix_parse_result result = try_parse_fix_message(ctx, curr_fix_messsage, fix_message_len, &fix_details);
+            buf_remaining -= result.bytes_consumed;
+
+            if (0 == result.result)
             {
                 process_for_latency_measurement(ctx, tv_sec, tv_nsec, &fix_details);
             }
-            else if (FIX_EMESSAGETOOSHORT == result)
+            else if (FIX_EMESSAGETOOSHORT == result.result)
             {
                 put_fragment(ctx, rxhash, curr_fix_messsage, fix_message_len);
             }
@@ -391,4 +392,9 @@ void vmars_extract_fix_messages(
         next_fix_messsage = NULL;
     }
     while (NULL != curr_fix_messsage);
+
+    if (buf_remaining > 0)
+    {
+        put_fragment(ctx, rxhash, &buf[data_len - buf_remaining], buf_remaining);
+    }
 }
