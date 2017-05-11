@@ -323,29 +323,35 @@ void vmars_extract_fix_messages(
     size_t data_len)
 {
     const char* next_fix_messsage = NULL;
-    const char* buf = data_ptr;
     int buf_remaining = (int) data_len;
     fix_details_t fix_details;
 
-    const char* curr_fix_messsage = boyermoore_search(ctx->matcher, buf, buf_remaining);
+    const char* curr_fix_messsage = boyermoore_search(ctx->matcher, data_ptr, buf_remaining);
     // NULL for curr_fix_message is okay here too.
 
-    // data starts with messgage fragment
-    if (curr_fix_messsage != buf)
+    // data starts with message fragment
+    if (curr_fix_messsage != data_ptr)
     {
-        unsigned long fragment_len = (curr_fix_messsage) ? curr_fix_messsage - buf : data_len;
+        unsigned long fragment_len = (curr_fix_messsage) ? curr_fix_messsage - data_ptr : data_len;
         buf_remaining -= fragment_len;
 
         fragment_t* fragment = get_fragment(ctx, rxhash);
         if (NULL == fragment)
         {
-            atomic_release_increment(&ctx->counters.corrupt_messages);
+            if (data_len < ctx->matcher->len)
+            {
+                put_fragment(ctx, rxhash, data_ptr, (int) data_len);
+            }
+            else
+            {
+                atomic_release_increment(&ctx->counters.corrupt_messages);
+            }
         }
         else
         {
             if (fragment->len + fragment_len < fragment->capacity)
             {
-                strncpy(&fragment->s[fragment->len], buf, fragment_len);
+                strncpy(&fragment->s[fragment->len], data_ptr, fragment_len);
                 fragment->len += fragment_len;
 
                 vmars_fix_parse_result result = try_parse_fix_message(ctx, fragment->s, fragment->len, &fix_details);
@@ -395,6 +401,6 @@ void vmars_extract_fix_messages(
 
     if (buf_remaining > 0)
     {
-        put_fragment(ctx, rxhash, &buf[data_len - buf_remaining], buf_remaining);
+        put_fragment(ctx, rxhash, &data_ptr[data_len - buf_remaining], buf_remaining);
     }
 }
