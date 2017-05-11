@@ -368,36 +368,32 @@ void vmars_extract_fix_messages(
         }
     }
 
-    do
+    while (NULL != curr_fix_messsage)
     {
-        if (NULL != curr_fix_messsage)
+        if (buf_remaining > ctx->matcher->len)
         {
-            if (buf_remaining > ctx->matcher->len)
-            {
-                next_fix_messsage = boyermoore_search(
-                    ctx->matcher, &curr_fix_messsage[ctx->matcher->len], buf_remaining - (int) ctx->matcher->len);
-            }
+            next_fix_messsage = boyermoore_search(
+                ctx->matcher, &curr_fix_messsage[ctx->matcher->len], buf_remaining - (int) ctx->matcher->len);
+        }
 
-            // And now for some pointer math.
-            int fix_message_len = NULL == next_fix_messsage ? buf_remaining : (int) (next_fix_messsage - curr_fix_messsage);
+        // And now for some pointer math.
+        int fix_message_len = NULL == next_fix_messsage ? buf_remaining : (int) (next_fix_messsage - curr_fix_messsage);
 
-            vmars_fix_parse_result result = try_parse_fix_message(ctx, curr_fix_messsage, fix_message_len, &fix_details);
-            buf_remaining -= result.bytes_consumed;
+        vmars_fix_parse_result result = try_parse_fix_message(ctx, curr_fix_messsage, fix_message_len, &fix_details);
+        buf_remaining -= result.bytes_consumed;
 
-            if (0 == result.result)
-            {
-                process_for_latency_measurement(ctx, tv_sec, tv_nsec, &fix_details);
-            }
-            else if (FIX_EMESSAGETOOSHORT == result.result)
-            {
-                put_fragment(ctx, rxhash, curr_fix_messsage, fix_message_len);
-            }
+        if (0 == result.result)
+        {
+            process_for_latency_measurement(ctx, tv_sec, tv_nsec, &fix_details);
+        }
+        else if (FIX_EMESSAGETOOSHORT == result.result)
+        {
+            put_fragment(ctx, rxhash, curr_fix_messsage, fix_message_len);
         }
 
         curr_fix_messsage = next_fix_messsage;
         next_fix_messsage = NULL;
     }
-    while (NULL != curr_fix_messsage);
 
     if (buf_remaining > 0)
     {
