@@ -177,7 +177,6 @@ static void display(vmars_capture_context_t* ctx, struct tpacket3_hdr* ppd)
 {
     struct ethhdr* eth = (struct ethhdr*) ((uint8_t*) ppd + ppd->tp_mac);
     struct iphdr* ip = (struct iphdr*) ((uint8_t*) eth + ETH_HLEN);
-    char data[256];
 
     if (eth->h_proto != htons(ETH_P_IP))
     {
