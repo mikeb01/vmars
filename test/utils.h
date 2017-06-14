@@ -25,4 +25,9 @@ char* fixify(const char* buf)
     return new_buf;
 }
 
+int random_in_range(int m, int n)
+{
+    return m + (rand() / (RAND_MAX / (n  - m + 1) + 1));
+}
+
 #endif //PACKET_MMAP_UTILS_H

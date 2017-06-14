@@ -202,7 +202,8 @@ static void display(vmars_capture_context_t* ctx, struct tpacket3_hdr* ppd)
         return;
     }
 
-    vmars_extract_fix_messages(ctx, ppd->hv1.tp_rxhash, ppd->tp_sec, ppd->tp_nsec, data_ptr, data_len);
+    vmars_extract_fix_messages(
+        ctx, ip->saddr, tcp->source, ip->daddr, tcp->dest, ppd->tp_sec, ppd->tp_nsec, data_ptr, data_len);
 }
 
 static void walk_block(vmars_capture_context_t* ctx, struct block_desc* pbd)

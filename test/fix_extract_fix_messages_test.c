@@ -1,7 +1,11 @@
+
+#define _GNU_SOURCE
+
 #include <string.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "common.h"
 #include "simpleboyermoore.h"
@@ -34,7 +38,7 @@
 void push_message(vmars_capture_context_t* ptr, const char* fix_message)
 {
     char* buf = fixify(fix_message);
-    vmars_extract_fix_messages(ptr, 9999, 1, 2, buf, strlen(buf));
+    vmars_extract_fix_messages(ptr, 1, 1, 1, 1, 1, 2, buf, strlen(buf));
     free(buf);
 }
 
@@ -42,8 +46,8 @@ void verify_latency_event(const vmars_capture_context_t* ptr, vmars_fix_msg_type
 {
     const vmars_rb_record_t* msg = vmars_spsc_rb_poll(ptr->rb);
 
-    assert(msg != NULL);
-    assert(msg->length != 0);
+    assert(("Message should be non-null", msg != NULL));
+    assert(("Message length should be non-zero", msg->length != 0));
 
     const vmars_fix_message_summary_t* summary = (vmars_fix_message_summary_t*) msg->data;
 
@@ -158,16 +162,32 @@ void parse_trace_response(vmars_capture_context_t* ptr)
 
 void parse_all_msssages(vmars_capture_context_t* ptr)
 {
-    push_message(
-        ptr,
+    const char* msg =
         TEST_NEW_ORDER_SINGLE_1
         TEST_NEW_ORDER_SINGLE_2
         TEST_EXECUTION_REPORT
         TEST_MASS_QUOTE
         TEST_MASS_QUOTE_ACK
         TEST_TRACE_REQUEST
-        TEST_TRACE_RESPONSE
-    );
+        TEST_TRACE_RESPONSE;
+
+    const size_t len = strlen(msg);
+
+    char* dstr = strdup(msg);
+
+    size_t offset = 0;
+
+    while (offset < len)
+    {
+        int r = random_in_range((int) offset, (int) len);
+        char c = dstr[r];
+        dstr[r] = '\0';
+        push_message(ptr, &dstr[offset]);
+        dstr[r] = c;
+
+        offset = (size_t) r;
+    }
+
 
     verify_latency_event(ptr, MSG_TYPE_NEW_ORDER_SINGLE, TEST_NEW_ORDER_SINGLE_1_LE);
     verify_latency_event(ptr, MSG_TYPE_NEW_ORDER_SINGLE, TEST_NEW_ORDER_SINGLE_2_LE);
@@ -180,6 +200,8 @@ void parse_all_msssages(vmars_capture_context_t* ptr)
 
 int main()
 {
+    srand(12312312);
+
     struct boyermoore_s matcher;
     boyermoore_init("8=FIX.4.", &matcher);
     vmars_spsc_rb_t rb;

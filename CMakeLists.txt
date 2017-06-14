@@ -56,6 +56,8 @@ add_executable(
     src/main.c
     ${SOURCE} ${HEADERS})
 
+add_dependencies(vmars hdr_histogram)
+
 add_executable(directio src/directio.c)
 
 #Tests
@@ -68,6 +70,8 @@ add_executable(
     test/utils.h
     ${SOURCE} ${HEADERS})
 target_include_directories(fix_extract_fix_messages_test PRIVATE src)
+
+add_dependencies(fix_extract_fix_messages_test hdr_histogram)
 
 add_executable(
     spsc_rb_test src/spsc_rb.h src/spsc_rb.c test/spsc_rb_test.c
@@ -85,4 +89,4 @@ target_include_directories(fixparser_parse_test PRIVATE src)
 add_test(fix_exctract_fix_messages fix_extract_fix_messages_test)
 add_test(spsc_rb spsc_rb_test)
 add_test(simpleboyermoore simpleboyermoore_test)
-add_test(fixparser_parse fixparser_test_parse)
+add_test(fixparser_parse fixparser_parse_test)

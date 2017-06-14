@@ -35,6 +35,32 @@ KHASH_MAP_INIT_INT(str, fragment_t*);
 
 typedef struct
 {
+    uint32_t saddr;
+    uint32_t daddr;
+    uint16_t sport;
+    uint16_t dport;
+} ipv4_stream_t;
+
+static khint32_t inline ipv4_stream_hash(ipv4_stream_t stream_id)
+{
+    uint32_t result = stream_id.saddr;
+    result = result * 31 + stream_id.daddr;
+    result = result * 31 + stream_id.sport;
+    result = result * 31 + stream_id.dport;
+    return result;
+}
+
+static int inline ipv4_stream_equal(ipv4_stream_t a, ipv4_stream_t b)
+{
+    return (a.saddr == b.saddr) && (a.daddr == b.daddr) && (a.sport == b.sport) && (a.dport == b.dport);
+}
+
+#define kh_ipv4_stream_hash_func(key) ipv4_stream_hash(key)
+#define kh_ipv4_stream_hash_equal(a, b) ipv4_stream_equal(a, b)
+KHASH_INIT(ipv4_stream, ipv4_stream_t, fragment_t*, 1, kh_ipv4_stream_hash_func, kh_ipv4_stream_hash_equal);
+
+typedef struct
+{
     int message_type;
     char ord_status;
     str_t sender_comp_id;
@@ -207,7 +233,7 @@ static void atomic_release_increment(int64_t* ptr)
     __atomic_store_n(ptr, *ptr + 1, __ATOMIC_RELEASE);
 }
 
-static fragment_t* get_fragment(vmars_capture_context_t* ctx, int32_t rxhash)
+static fragment_t* get_fragment(vmars_capture_context_t* ctx, ipv4_stream_t stream_id)
 {
     if (NULL == ctx->state)
     {
@@ -215,9 +241,9 @@ static fragment_t* get_fragment(vmars_capture_context_t* ctx, int32_t rxhash)
     }
 
     khint_t k;
-    khash_t(str)* fragment_map = (khash_t(str)*) ctx->state;
+    khash_t(ipv4_stream)* fragment_map = (khash_t(ipv4_stream)*) ctx->state;
 
-    k = kh_get(str, fragment_map, (khint32_t) rxhash);
+    k = kh_get(ipv4_stream, fragment_map, stream_id);
 
     if (k != kh_end(fragment_map))
     {
@@ -227,23 +253,23 @@ static fragment_t* get_fragment(vmars_capture_context_t* ctx, int32_t rxhash)
     return NULL;
 }
 
-static void put_fragment(vmars_capture_context_t* ctx, int32_t rxhash, const char* messsage, int len)
+static void put_fragment(vmars_capture_context_t* ctx, ipv4_stream_t stream_id, const char* messsage, int len)
 {
-    khash_t(str)* fragment_map;
+    khash_t(ipv4_stream)* fragment_map;
     khint_t k;
     int r;
 
     if (NULL == ctx->state)
     {
-        fragment_map = kh_init(str);
+        fragment_map = kh_init(ipv4_stream);
         ctx->state = fragment_map;
     }
     else
     {
-        fragment_map = (khash_t(str)*) ctx->state;
+        fragment_map = (khash_t(ipv4_stream)*) ctx->state;
     }
 
-    k = kh_get(str, fragment_map, (khint32_t) rxhash);
+    k = kh_get(ipv4_stream, fragment_map, stream_id);
 
     fragment_t* fragment;
     if (k != kh_end(fragment_map))
@@ -255,7 +281,7 @@ static void put_fragment(vmars_capture_context_t* ctx, int32_t rxhash, const cha
         fragment = malloc((MAX_FRAGMENT_TOTAL_SIZE * sizeof(char)));
         fragment->capacity = MAX_FRAGMENT_TOTAL_SIZE - sizeof(fragment_t);
 
-        k = kh_put(str, fragment_map, (khint32_t) rxhash, &r);
+        k = kh_put(ipv4_stream, fragment_map, stream_id, &r);
         kh_val(fragment_map, k) = fragment;
     }
 
@@ -263,7 +289,7 @@ static void put_fragment(vmars_capture_context_t* ctx, int32_t rxhash, const cha
     fragment->len = len;
 }
 
-static void remove_fragment(vmars_capture_context_t* ctx, int32_t rxhash)
+static void remove_fragment(vmars_capture_context_t* ctx, ipv4_stream_t stream_id)
 {
     if (NULL == ctx->state)
     {
@@ -271,14 +297,14 @@ static void remove_fragment(vmars_capture_context_t* ctx, int32_t rxhash)
     }
 
     khint_t k;
-    khash_t(str)* fragment_map = (khash_t(str)*) ctx->state;
+    khash_t(ipv4_stream)* fragment_map = (khash_t(ipv4_stream)*) ctx->state;
 
-    k = kh_get(str, fragment_map, (khint32_t) rxhash);
+    k = kh_get(ipv4_stream, fragment_map, stream_id);
 
     if (k != kh_end(fragment_map))
     {
         fragment_t* fragment = kh_val(fragment_map, k);
-        kh_del(str, fragment_map, k);
+        kh_del(ipv4_stream, fragment_map, k);
         kh_val(fragment_map, k) = NULL;
         free(fragment);
     }
@@ -316,7 +342,10 @@ vmars_fix_parse_result try_parse_fix_message(
 
 void vmars_extract_fix_messages(
     vmars_capture_context_t* ctx,
-    int32_t rxhash,
+    uint32_t saddr,
+    uint16_t sport,
+    uint32_t daddr,
+    uint16_t dport,
     unsigned int tv_sec,
     unsigned int tv_nsec,
     const char* data_ptr,
@@ -325,6 +354,7 @@ void vmars_extract_fix_messages(
     const char* next_fix_messsage = NULL;
     int buf_remaining = (int) data_len;
     fix_details_t fix_details;
+    ipv4_stream_t stream_id = { .daddr = daddr, .saddr = saddr, .dport = dport, .sport = sport };
 
     const char* curr_fix_messsage = boyermoore_search(ctx->matcher, data_ptr, buf_remaining);
     // NULL for curr_fix_message is okay here too.
@@ -335,12 +365,12 @@ void vmars_extract_fix_messages(
         unsigned long fragment_len = (curr_fix_messsage) ? curr_fix_messsage - data_ptr : data_len;
         buf_remaining -= fragment_len;
 
-        fragment_t* fragment = get_fragment(ctx, rxhash);
+        fragment_t* fragment = get_fragment(ctx, stream_id);
         if (NULL == fragment)
         {
             if (data_len < ctx->matcher->len)
             {
-                put_fragment(ctx, rxhash, data_ptr, (int) data_len);
+                put_fragment(ctx, stream_id, data_ptr, (int) data_len);
             }
             else
             {
@@ -362,7 +392,7 @@ void vmars_extract_fix_messages(
 
                 if (result.result != FIX_EMESSAGETOOSHORT)
                 {
-                    remove_fragment(ctx, rxhash);
+                    remove_fragment(ctx, stream_id);
                 }
             }
         }
@@ -388,7 +418,7 @@ void vmars_extract_fix_messages(
         }
         else if (FIX_EMESSAGETOOSHORT == result.result)
         {
-            put_fragment(ctx, rxhash, curr_fix_messsage, fix_message_len);
+            put_fragment(ctx, stream_id, curr_fix_messsage, fix_message_len);
         }
 
         curr_fix_messsage = next_fix_messsage;
@@ -397,6 +427,6 @@ void vmars_extract_fix_messages(
 
     if (buf_remaining > 0)
     {
-        put_fragment(ctx, rxhash, &data_ptr[data_len - buf_remaining], buf_remaining);
+        put_fragment(ctx, stream_id, &data_ptr[data_len - buf_remaining], buf_remaining);
     }
 }
