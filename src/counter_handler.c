@@ -11,9 +11,11 @@
 #include <string.h>
 #include <linux/if_packet.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 #include "common.h"
 #include "counter_handler.h"
+#include "JodieClient.h"
 
 static sig_atomic_t sigint = 0;
 
@@ -51,7 +53,7 @@ void* vmars_poll_counters(void* context)
 
     while (!sigint)
     {
-        sleep(2);
+        sleep(1);
         memset(&aggregate_counters, 0, sizeof(vmars_monitoring_counters_t));
         memset(&stats, 0, sizeof(struct tpacket_stats_v3));
 
@@ -66,18 +68,15 @@ void* vmars_poll_counters(void* context)
             gather_socket_stats(ctx->counters_vec.counters[i]->fd, &stats);
         }
 
-        printf(
-            "Valid fix messages: %ld, invalid checksums: %ld, corrupt messages: %ld\n",
-            aggregate_counters.valid_messages,
-            aggregate_counters.invalid_checksums,
-            aggregate_counters.corrupt_messages);
-
-        printf(
-            "Bytes: %ld, packets: %d, drops: %d, freeze-q-cnt: %d\n",
-            aggregate_counters.bytes_total,
-            stats.tp_packets,
-            stats.tp_drops,
-            stats.tp_freeze_q_cnt);
+        const long timestamp = jodie_getMillis();
+        jodie_logGauge(ctx->jodie_server, "vmars.valid_messages", aggregate_counters.valid_messages, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.invalid_checksums", aggregate_counters.valid_messages, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.corrupt_messages", aggregate_counters.valid_messages, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.network.bytes", aggregate_counters.bytes_total, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.network.packets", stats.tp_packets, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.network.drops", stats.tp_drops, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.network.freeze_q_cnt", stats.tp_freeze_q_cnt, timestamp);
+        jodie_flush(ctx->jodie_server);
     }
 
     pthread_exit(NULL);

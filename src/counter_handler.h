@@ -25,6 +25,7 @@ typedef struct
 {
     vmars_monitoring_counters_vec_t counters_vec;
     vmars_config_t config;
+    struct jodie* jodie_server;
 } vmars_counters_context_t;
 
 void vmars_counters_sighandler(int num);

@@ -19,52 +19,55 @@
 
 #include "JodieClient.h"
 
-struct jodie jodie_server =
-    {&jodie_init, &jodie_logGauge, &jodie_logCounter, &jodie_logPercent, &jodie_logTiming, &jodie_logStatus,
-        &jodie_flush, &jodie_close};
-
 
 // expects input as an address in numbers and dots format.
 // host is required, port is optional. set to 0 to default to JODIE_PORT
 // 
-int jodie_init(char* host, int port)
+int jodie_init(char* host, int port, struct jodie* jodie_server)
 {
-
     // should use getaddrinfo
-    if (inet_aton(host, &jodie_server.jodie_host.sin_addr) == 0)
+    if (inet_aton(host, &jodie_server->jodie_host.sin_addr) == 0)
     {
         perror("inet_aton");
         return -1;
     }
 
-    jodie_server.jodie_host.sin_family = AF_INET;
+    jodie_server->jodie_host.sin_family = AF_INET;
 
     if (port != 0)
     {
-        jodie_server.jodie_host.sin_port = htons(port);
+        jodie_server->jodie_host.sin_port = htons(port);
     }
     else
     {
-        jodie_server.jodie_host.sin_port = htons(JODIE_PORT);
+        jodie_server->jodie_host.sin_port = htons(JODIE_PORT);
     }
 
-    jodie_server.jodie_socket = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+    jodie_server->jodie_socket = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
 
-    if (jodie_server.jodie_socket == -1)
+    if (jodie_server->jodie_socket == -1)
     {
         perror("socket");
         return -1;
     }
 
-    memset(jodie_server.send_buffer, 0, BUFFER_SIZE);
-    jodie_server.send_index = 0;
+    memset(jodie_server->send_buffer, 0, BUFFER_SIZE);
+    jodie_server->send_index = 0;
 
     return 0;
 }
 
-int jodie_close()
+int jodie_dup(struct jodie* src, struct jodie* dst)
 {
-    return close(jodie_server.jodie_socket);
+    dst->jodie_host = src->jodie_host;
+    dst->jodie_socket = src->jodie_socket;
+    dst->send_index = src->send_index;
+    return 0;
+}
+
+int jodie_close(struct jodie* jodie_server)
+{
+    return close(jodie_server->jodie_socket);
 }
 
 signed long int jodie_getMillis()
@@ -79,7 +82,7 @@ signed long int jodie_getMillis()
     return timestamp;
 }
 
-int jodie_logGauge(char* datapath, signed long int value, signed long int timestamp)
+int jodie_logGauge(struct jodie* jodie_server, char* datapath, signed long int value, signed long int timestamp)
 {
     size_t size_estimate = 0;
     char tmp_buf[BUFFER_SIZE];
@@ -98,20 +101,20 @@ int jodie_logGauge(char* datapath, signed long int value, signed long int timest
 
     size_estimate = strlen(tmp_buf);
 
-    if ((size_estimate + jodie_server.send_index) > PACKET_SIZE)
+    if ((size_estimate + jodie_server->send_index) > PACKET_SIZE)
     {
-        jodie_flush();
+        jodie_flush(jodie_server);
         // do a flush
     }
 
-    strncpy((char*) (jodie_server.send_buffer + jodie_server.send_index), tmp_buf, size_estimate);
-    jodie_server.send_index += size_estimate;
+    strncpy((char*) (jodie_server->send_buffer + jodie_server->send_index), tmp_buf, size_estimate);
+    jodie_server->send_index += size_estimate;
 
     return 0;
 
 }
 
-int jodie_logCounter(char* datapath, signed long int value, signed long int timestamp)
+int jodie_logCounter(struct jodie* jodie_server, char* datapath, signed long int value, signed long int timestamp)
 {
     size_t size_estimate = 0;
     char tmp_buf[BUFFER_SIZE];
@@ -130,19 +133,19 @@ int jodie_logCounter(char* datapath, signed long int value, signed long int time
 
     size_estimate = strlen(tmp_buf);
 
-    if ((size_estimate + jodie_server.send_index) > PACKET_SIZE)
+    if ((size_estimate + jodie_server->send_index) > PACKET_SIZE)
     {
-        jodie_flush();
+        jodie_flush(jodie_server);
         // do a flush
     }
 
-    strncpy((char*) (jodie_server.send_buffer + jodie_server.send_index), tmp_buf, size_estimate);
-    jodie_server.send_index += size_estimate;
+    strncpy((char*) (jodie_server->send_buffer + jodie_server->send_index), tmp_buf, size_estimate);
+    jodie_server->send_index += size_estimate;
 
     return 0;
 }
 
-int jodie_logPercent(char* datapath, signed long int value, signed long int timestamp)
+int jodie_logPercent(struct jodie* jodie_server, char* datapath, signed long int value, signed long int timestamp)
 {
     ssize_t size_estimate = 0;
     char tmp_buf[BUFFER_SIZE];
@@ -166,19 +169,19 @@ int jodie_logPercent(char* datapath, signed long int value, signed long int time
 
     size_estimate = strlen(tmp_buf);
 
-    if ((size_estimate + jodie_server.send_index) > PACKET_SIZE)
+    if ((size_estimate + jodie_server->send_index) > PACKET_SIZE)
     {
-        jodie_flush();
+        jodie_flush(jodie_server);
         // do a flush
     }
 
-    strncpy((char*) (jodie_server.send_buffer + jodie_server.send_index), tmp_buf, size_estimate);
-    jodie_server.send_index += size_estimate;
+    strncpy((char*) (jodie_server->send_buffer + jodie_server->send_index), tmp_buf, size_estimate);
+    jodie_server->send_index += size_estimate;
 
     return 0;
 }
 
-int jodie_logTiming(char* datapath, signed long int value, signed long int timestamp, char* units)
+int jodie_logTiming(struct jodie* jodie_server, char* datapath, signed long int value, signed long int timestamp, char* units)
 {
     unsigned size_estimate = 0;
     char tmp_buf[BUFFER_SIZE];
@@ -205,20 +208,20 @@ int jodie_logTiming(char* datapath, signed long int value, signed long int times
 
     size_estimate = strlen(tmp_buf);
 
-    if ((size_estimate + jodie_server.send_index) > PACKET_SIZE)
+    if ((size_estimate + jodie_server->send_index) > PACKET_SIZE)
     {
-        jodie_flush();
+        jodie_flush(jodie_server);
         // do a flush
     }
 
-    strncpy((char*) (jodie_server.send_buffer + jodie_server.send_index), tmp_buf, size_estimate);
-    jodie_server.send_index += size_estimate;
+    strncpy((char*) (jodie_server->send_buffer + jodie_server->send_index), tmp_buf, size_estimate);
+    jodie_server->send_index += size_estimate;
 
     return 0;
 }
 
 // uses the status enum
-int jodie_logStatus(char* datapath, enum status value, signed long int timestamp)
+int jodie_logStatus(struct jodie* jodie_server, char* datapath, enum status value, signed long int timestamp)
 {
     unsigned size_estimate = 0;
     char tmp_buf[BUFFER_SIZE];
@@ -238,26 +241,26 @@ int jodie_logStatus(char* datapath, enum status value, signed long int timestamp
 
     size_estimate = strlen(tmp_buf);
 
-    if ((size_estimate + jodie_server.send_index) > PACKET_SIZE)
+    if ((size_estimate + jodie_server->send_index) > PACKET_SIZE)
     {
-        jodie_flush();
+        jodie_flush(jodie_server);
         // do a flush
     }
 
-    strncpy((char*) (jodie_server.send_buffer + jodie_server.send_index), tmp_buf, size_estimate);
-    jodie_server.send_index += size_estimate;
+    strncpy((char*) (jodie_server->send_buffer + jodie_server->send_index), tmp_buf, size_estimate);
+    jodie_server->send_index += size_estimate;
 
     return 0;
 }
 
 
-int jodie_flush()
+int jodie_flush(struct jodie* jodie_server)
 {
     ssize_t retval = 0;
 
     retval = sendto(
-        jodie_server.jodie_socket, jodie_server.send_buffer, strlen((char*) (jodie_server.send_buffer)), 0,
-        (const struct sockaddr*) &jodie_server.jodie_host, sizeof(jodie_server.jodie_host));
+        jodie_server->jodie_socket, jodie_server->send_buffer, strlen((char*) (jodie_server->send_buffer)), 0,
+        (const struct sockaddr*) &jodie_server->jodie_host, sizeof(jodie_server->jodie_host));
 
     if (retval == -1)
     {
@@ -265,37 +268,8 @@ int jodie_flush()
         return -1;
     }
 
-    jodie_server.send_index = 0;
-    memset(jodie_server.send_buffer, 0, BUFFER_SIZE);
+    jodie_server->send_index = 0;
+    memset(jodie_server->send_buffer, 0, BUFFER_SIZE);
 
     return 0;
 }
-
-#ifdef JODIE_DEBUG
-// test main routine
-// 
-int main (int argc, char *argv[])
-{
-     enum status test;
-     
-     test = WARNING;
-     
-     if (argc < 2) {
-      printf ("%s jodie_host\n",argv[0]);
-      exit(0);
-     }
-     
-     jodie_server.init(argv[1],0);
-     
-     jodie_server.logGauge("test.test.foo.gauge",12345,0);
-     jodie_server.logCounter("test.test.foo.counter",12345,0);
-     jodie_server.logTiming("test.test.foo.timing",12345,0,"ms");
-     jodie_server.logStatus("test.test.foo.status",test,0);
-     
-     jodie_server.flush();
-     
-     jodie_server.close();
-     
-     exit(0);
-}
-#endif

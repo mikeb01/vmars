@@ -8,12 +8,14 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <string.h>
+#include <netinet/in.h>
 
 #include "common.h"
 #include "spsc_rb.h"
 #include "counter_handler.h"
 #include "packet.h"
 #include "latency_handler.h"
+#include "JodieClient.h"
 
 void root_sighandler(int num)
 {
@@ -44,7 +46,7 @@ static struct option long_options[] =
     { "capture-port", required_argument, NULL, 'c' },
     { "udp-host", required_argument, NULL, 'h' },
     { "udp-port", required_argument, NULL, 'p' },
-    { 0, 0, 0, 0}
+    { 0, 0, 0, 0 }
 };
 
 static vmars_str_vec_t split_interfaces(const char* interfaces)
@@ -86,7 +88,9 @@ int main(int argc, char** argp)
     int opt;
     vmars_config_t config;
     vmars_latency_handler_context_t latency_context;
-    vmars_monitoring_counters_vec_t counters_vec;
+    vmars_counters_context_t counters_context;
+    struct jodie jodie_for_latency;
+    struct jodie jodie_for_monitoring;
 
     memset(&config, 0, sizeof(vmars_config_t));
 
@@ -167,6 +171,7 @@ int main(int argc, char** argp)
     latency_context.buffer_vec.ring_buffers = calloc((size_t) total_threads, sizeof(vmars_spsc_rb_t*));
     latency_context.buffer_vec.len = total_threads;
 
+    vmars_monitoring_counters_vec_t counters_vec;
     counters_vec.counters = calloc((size_t) total_threads, sizeof(vmars_spsc_rb_t*));
     counters_vec.len = total_threads;
 
@@ -207,8 +212,16 @@ int main(int argc, char** argp)
         }
     }
 
+    jodie_init(config.udp_host, config.udp_port, &jodie_for_latency);
+    jodie_dup(&jodie_for_latency, &jodie_for_monitoring);
+
+    counters_context.counters_vec = counters_vec;
+    counters_context.jodie_server = &jodie_for_monitoring;
+
+    latency_context.jodie_server = &jodie_for_latency;
+
     pthread_create(latency_thread, NULL, poll_ring_buffers, &latency_context);
-    pthread_create(counters_thread, NULL, vmars_poll_counters, &counters_vec);
+    pthread_create(counters_thread, NULL, vmars_poll_counters, &counters_context);
 
     for (int i = 0; i < config.num_threads; i++)
     {
@@ -217,6 +230,8 @@ int main(int argc, char** argp)
 
     pthread_join(*latency_thread, NULL);
     pthread_join(*counters_thread, NULL);
+
+    jodie_close(&jodie_for_latency);
 
     return 0;
 }

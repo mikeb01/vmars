@@ -19,6 +19,7 @@ typedef struct
 {
     vmars_config_t* config;
     vmars_buffer_vec_t buffer_vec;
+    struct jodie* jodie_server;
 } vmars_latency_handler_context_t;
 
 void* poll_ring_buffers(void* context);

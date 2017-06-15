@@ -29,7 +29,6 @@ static sig_atomic_t sigint = 0;
 void vmars_latency_sighandler(int num)
 {
     sigint = 1;
-    jodie_server.close();
 }
 
 typedef struct
@@ -140,9 +139,7 @@ void* poll_ring_buffers(void* context)
     struct timespec curr_timestamp;
     struct hdr_histogram* histogram;
     hdr_init(1, INT64_C(10000000000), 2, &histogram);
-
-    jodie_server.init(ctx->config->udp_host, ctx->config->udp_port);
-
+    
     clock_gettime(CLOCK_REALTIME, &last_timestamp);
 
     while (!sigint)
@@ -151,19 +148,19 @@ void* poll_ring_buffers(void* context)
 
         if (curr_timestamp.tv_sec > last_timestamp.tv_sec)
         {
-            jodie_server.logGauge("vmars.latency.max", hdr_max(histogram), curr_timestamp.tv_sec * 1000);
-            jodie_server.logGauge("vmars.latency.50", hdr_value_at_percentile(histogram, 50), curr_timestamp.tv_sec * 1000);
-            jodie_server.logGauge("vmars.latency.99", hdr_value_at_percentile(histogram, 99), curr_timestamp.tv_sec * 1000);
-            jodie_server.logGauge("vmars.latency.9999", hdr_value_at_percentile(histogram, 99.99), curr_timestamp.tv_sec * 1000);
+            jodie_logGauge(ctx->jodie_server, "vmars.latency.max", hdr_max(histogram), curr_timestamp.tv_sec * 1000);
+            jodie_logGauge(ctx->jodie_server, "vmars.latency.50", hdr_value_at_percentile(histogram, 50), curr_timestamp.tv_sec * 1000);
+            jodie_logGauge(ctx->jodie_server, "vmars.latency.99", hdr_value_at_percentile(histogram, 99), curr_timestamp.tv_sec * 1000);
+            jodie_logGauge(ctx->jodie_server, "vmars.latency.9999", hdr_value_at_percentile(histogram, 99.99), curr_timestamp.tv_sec * 1000);
             if (0 != histogram->total_count)
             {
-                jodie_server.logGauge("vmars.latency.mean", (int64_t) hdr_mean(histogram), curr_timestamp.tv_sec * 1000);
+                jodie_logGauge(ctx->jodie_server, "vmars.latency.mean", (int64_t) hdr_mean(histogram), curr_timestamp.tv_sec * 1000);
             }
             else
             {
-                jodie_server.logGauge("vmars.latency.mean", 0, curr_timestamp.tv_sec * 1000);
+                jodie_logGauge(ctx->jodie_server, "vmars.latency.mean", 0, curr_timestamp.tv_sec * 1000);
             }
-            jodie_server.flush();
+            jodie_flush(ctx->jodie_server);
 
             last_timestamp = curr_timestamp;
             hdr_reset(histogram);
