@@ -63,7 +63,6 @@ static void verify_single_message(vmars_capture_context_t* ptr, const char* fix_
 {
     push_message(ptr, fix_message);
     verify_latency_event(ptr, msg_type, key);
-
 }
 
 static void verify_message_split(
