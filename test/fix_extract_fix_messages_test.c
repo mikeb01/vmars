@@ -23,6 +23,7 @@
 #define TEST_NEW_ORDER_SINGLE_2_LE "BROKER04|REUTERS|ORD10001|4001"
 
 #define TEST_EXECUTION_REPORT "8=FIX.4.2|9=264|35=8|49=FIX-API|56=user1n3xpr3n09lph|34=4|52=20170412-23:44:20.150|60=20170412-23:44:20.117|20=0|22=8|6=0|11=orderT8B'4ye6sVoCDb|17=QLAKAAAAAAAAAAAC|48=180385|55=instrument1wpxw3fgom2mq|1=1|37=QLAKAAAAAAAAAAAB|151=10.0|14=0.0|38=10.0|54=1|44=100.0|59=0|150=0|39=0|10=232|"
+#define TEST_EXECUTION_REPORT_TRADE "8=FIX.4.2|9=264|35=8|49=FIX-API|56=user1n3xpr3n09lph|34=4|52=20170412-23:44:20.150|60=20170412-23:44:20.117|20=0|22=8|6=0|11=orderT8B'4ye6sVoCDb|17=QLAKAAAAAAAAAAAC|48=180385|55=instrument1wpxw3fgom2mq|1=1|37=QLAKAAAAAAAAAAAB|151=10.0|14=0.0|38=10.0|54=1|44=100.0|59=0|150=F|39=0|10=254|"
 #define TEST_EXECUTION_REPORT_LE "user1n3xpr3n09lph|FIX-API|orderT8B'4ye6sVoCDb|instrument1wpxw3fgom2mq"
 
 #define TEST_MASS_QUOTE "8=FIX.4.2|9=198|35=i|34=4|49=baseUni1ds7nwwsj62ob|52=20170413-01:22:09.595|56=FIX-API|47=P|117=clIdE4c]oav3SF7bg\"L|581=3|296=1|302=1|311=instrument1psh813x11j3i|309=180387|305=8|304=1|295=1|299=0|132=50|134=100000|10=119|"
@@ -198,6 +199,14 @@ void parse_all_msssages(vmars_capture_context_t* ptr)
     verify_latency_event(ptr, MSG_TYPE_TRACE_RSP, TEST_TRACE_LE);
 }
 
+void should_not_calculate_latency_in_non_new_execution_reports(vmars_capture_context_t* ptr)
+{
+    push_message(ptr, TEST_EXECUTION_REPORT_TRADE);
+
+    const vmars_rb_record_t* msg = vmars_spsc_rb_poll(ptr->rb);
+    assert(msg == NULL);
+}
+
 int main()
 {
     srand(12312312);
@@ -229,4 +238,5 @@ int main()
     parse_split_2_trace_request_with_fragment_less_than_header(&ctx);
     parse_split_1_trace_request_with_fragment_less_than_header(&ctx);
     parse_all_msssages(&ctx);
+    should_not_calculate_latency_in_non_new_execution_reports(&ctx);
 }

@@ -31,8 +31,6 @@ typedef struct
     char s[0];
 } fragment_t;
 
-KHASH_MAP_INIT_INT(str, fragment_t*);
-
 typedef struct
 {
     uint32_t saddr;
@@ -63,6 +61,7 @@ typedef struct
 {
     int message_type;
     char ord_status;
+    char exec_type;
     str_t sender_comp_id;
     str_t cl_ord_id;
     str_t target_comp_id;
@@ -85,6 +84,10 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
             {
                 fix_details->message_type = INT_OF(fix_value[0], fix_value[1]);
             }
+            break;
+
+        case FIX_EXEC_TYPE:
+            fix_details->exec_type = fix_value[0];
             break;
 
         case FIX_CL_ORD_ID:
@@ -154,6 +157,12 @@ static void process_for_latency_measurement(
             break;
 
         case MSG_TYPE_EXECUTION_REPORT:
+            should_process = fix_details->exec_type == FIX_EXEC_TYPE_NEW;
+            local_id = fix_details->sender_comp_id;
+            remote_id = fix_details->target_comp_id;
+            instruction = fix_details->cl_ord_id;
+            break;
+
         case MSG_TYPE_MASS_QUOTE_ACK:
         case MSG_TYPE_TRACE_RSP:
             should_process = true;
@@ -318,7 +327,8 @@ vmars_fix_parse_result try_parse_fix_message(
 {
     memset(fix_details, 0, sizeof(fix_details_t));
 
-    vmars_fix_parse_result result = vmars_fix_parse_msg(fix_messsage, fix_message_len, fix_details, NULL, handle_tag, NULL);
+    vmars_fix_parse_result result =
+        vmars_fix_parse_msg(fix_messsage, fix_message_len, fix_details, NULL, handle_tag, NULL, 0);
 
     if (result.result == 0)
     {

@@ -1,5 +1,7 @@
 #include <x86intrin.h>
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #include "fixparser.h"
 
@@ -9,12 +11,11 @@ const char* INITIAL_HEADER_44 = "8=FIX.4.4\x01""9=";
 const int INITIAL_HEADER_LEN = 12;
 const int CHECK_SUM_LEN = 7;
 
-// use SSE instructions
-static inline int validate_checksum(const char* buf, int buf_len, const char* expected)
+static inline int calculate_checksum(const char* buf, int buf_len)
 {
     register long int sum = 0;
     register long int ii;
-    int compare, extra;
+    int extra;
 
     __m64 zero = (__m64) 0LL; // v8qi - 8 bytes
     __m64 dest;
@@ -37,19 +38,40 @@ static inline int validate_checksum(const char* buf, int buf_len, const char* ex
     // mop up extra characters at the end of the block.
     for (ii = buf_len - extra; ii < buf_len; ii++) sum += buf[ii];
 
-    // convert expected to an int
-    compare = ((expected[0] - '0') * 100) + ((expected[1] - '0') * 10) + (expected[2] - '0');
-
-//    if (fix_parser_debug) printf("validate checksum: expected %s, calculated = %ld\n", expected, (sum & 0xff));
-    return ((int) (sum & 0xff)) - compare; // modulo 256 and compare
+    return (int) (sum & 0xFF);
 }
 
+static inline int supplied_checksum(const char* expected)
+{
+    return ((expected[0] - '0') * 100) + ((expected[1] - '0') * 10) + (expected[2] - '0');
+}
+
+// use SSE instructions
+static inline int validate_checksum(const char* buf, int buf_len, const char* expected)
+{
+    const int calulated_checksum = calculate_checksum(buf, buf_len);
+    const int compare = supplied_checksum(expected);
+    return calulated_checksum - compare; // modulo 256 and compare
+}
+
+static bool opt_validate_checksum(int options)
+{
+    return (options & FIX_OPT_SKIP_VERIFY_CHECKSUM) == 0;
+}
+
+static bool opt_report_calculated_checksum(int options)
+{
+    return (options & FIX_OPT_REPORT_CALCULATED_CHECKSUM_FOR_TAG_10) != 0;
+}
 
 vmars_fix_parse_result vmars_fix_parse_msg(
-    const char* buf, int len, void* context,
+    const char* buf,
+    int len,
+    void* context,
     void (* startp)(void*, int, int),
     void (* tagp)(void*, int, const char*, int),
-    void (* endp)(void*))
+    void (* endp)(void*),
+    int options)
 {
     int position = 0;
     int fix_type = -1;
@@ -97,7 +119,12 @@ vmars_fix_parse_result vmars_fix_parse_msg(
 
     len = msg_len + position + CHECK_SUM_LEN;
 
-    if (validate_checksum(&buf[0], msg_len + position, &buf[position + msg_len + 3]) != 0)
+    const int calculated_checksum = calculate_checksum(&buf[0], msg_len + position);
+    const int checksum = supplied_checksum(&buf[position + msg_len + 3]);
+
+    if (opt_validate_checksum(options) && calculated_checksum != checksum)
+//
+//    if (validate_checksum(&buf[0], msg_len + position, &buf[position + msg_len + 3]) != 0)
     {
         return (vmars_fix_parse_result){ .result = FIX_ECHECKSUMINVALID, .bytes_consumed = len };
     }
@@ -147,7 +174,20 @@ vmars_fix_parse_result vmars_fix_parse_msg(
             return (vmars_fix_parse_result){ .result = FIX_EEMPTYVALUE, .bytes_consumed = len };
         }
 
-        (tagp)(context, tag, &buf[valueStartPosition], valueEndPosition - valueStartPosition);
+        if (opt_report_calculated_checksum(options) && tag == 10)
+        {
+            char calculated_checksum_str[3] = {
+                '0' + (calculated_checksum / 100),
+                '0' + (calculated_checksum / 10) % 10,
+                '0' + (calculated_checksum % 10)
+            };
+            (tagp)(context, tag, &calculated_checksum_str[0], 3);
+        }
+        else
+        {
+            (tagp)(context, tag, &buf[valueStartPosition], valueEndPosition - valueStartPosition);
+        }
+
     }
     while (position < len);
 
