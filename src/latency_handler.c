@@ -126,6 +126,7 @@ void* poll_ring_buffers(void* context)
     struct timespec curr_timestamp;
     struct hdr_histogram* histogram;
     hdr_init(1, INT64_C(10000000000), 2, &histogram);
+    int64_t completed_requests = 0;
     
     clock_gettime(CLOCK_REALTIME, &last_timestamp);
 
@@ -135,6 +136,9 @@ void* poll_ring_buffers(void* context)
 
         if (curr_timestamp.tv_sec > last_timestamp.tv_sec)
         {
+            completed_requests += histogram->total_count;
+
+            jodie_logGauge(ctx->jodie_server, "vmars.latency.completedRequests", completed_requests, curr_timestamp.tv_sec * 1000);
             jodie_logGauge(ctx->jodie_server, "vmars.latency.max", hdr_max(histogram), curr_timestamp.tv_sec * 1000);
             jodie_logGauge(ctx->jodie_server, "vmars.latency.50", hdr_value_at_percentile(histogram, 50), curr_timestamp.tv_sec * 1000);
             jodie_logGauge(ctx->jodie_server, "vmars.latency.99", hdr_value_at_percentile(histogram, 99), curr_timestamp.tv_sec * 1000);
