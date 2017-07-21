@@ -177,9 +177,9 @@ vmars_fix_parse_result vmars_fix_parse_msg(
         if (opt_report_calculated_checksum(options) && tag == 10)
         {
             char calculated_checksum_str[3] = {
-                '0' + (calculated_checksum / 100),
-                '0' + (calculated_checksum / 10) % 10,
-                '0' + (calculated_checksum % 10)
+                (char) ('0' + (calculated_checksum / 100)),
+                (char) ('0' + (calculated_checksum / 10) % 10),
+                (char) ('0' + (calculated_checksum % 10))
             };
             (tagp)(context, tag, &calculated_checksum_str[0], 3);
         }

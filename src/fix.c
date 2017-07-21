@@ -23,6 +23,20 @@ static void atomic_release_increment(int64_t* ptr)
     __atomic_store_n(ptr, *ptr + 1, __ATOMIC_RELEASE);
 }
 
+static int str2int(const char* c, size_t len)
+{
+    if (len > 31)
+    {
+        return -1;
+    }
+
+    char temp[32];
+
+    strncpy(temp, c, len);
+    temp[len] = '\0';
+    return atoi(temp);
+}
+
 typedef struct
 {
     const char* s;
@@ -67,6 +81,7 @@ typedef struct
     int message_type;
     char ord_status;
     char exec_type;
+    int quote_status;
     str_t sender_comp_id;
     str_t cl_ord_id;
     str_t target_comp_id;
@@ -93,6 +108,10 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
 
         case FIX_EXEC_TYPE:
             fix_details->exec_type = fix_value[0];
+            break;
+
+        case FIX_QUOTE_STATUS:
+            fix_details->quote_status = str2int(fix_value, (size_t) len);
             break;
 
         case FIX_CL_ORD_ID:
@@ -196,6 +215,12 @@ static void process_for_latency_measurement(
             break;
 
         case MSG_TYPE_MASS_QUOTE_ACK:
+            should_process = fix_details->quote_status == FIX_QUOTE_STATUS_ACCEPTED;
+            local_id = fix_details->sender_comp_id;
+            remote_id = fix_details->target_comp_id;
+            instruction = fix_details->cl_ord_id;
+            break;
+
         case MSG_TYPE_TRACE_RSP:
             should_process = true;
             local_id = fix_details->sender_comp_id;

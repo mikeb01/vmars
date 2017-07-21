@@ -30,13 +30,12 @@
 #define TEST_MASS_QUOTE_LE "baseUni1ds7nwwsj62ob|FIX-API|clIdE4c]oav3SF7bg\"L|instrument1psh813x11j3i"
 
 #define TEST_MASS_QUOTE_ACK "8=FIX.4.2|9=157|35=b|49=FIX-API|56=baseUni1ds7nwwsj62ob|34=4|52=20170413-01:22:09.613|297=0|117=clIdE4c]oav3SF7bg\"L|296=1|302=1|311=instrument1psh813x11j3i|309=180387|305=8|10=019|"
+#define TEST_MASS_QUOTE_ACK_CANCEL "8=FIX.4.2|9=157|35=b|49=FIX-API|56=baseUni1ds7nwwsj62ob|34=4|52=20170413-01:22:09.613|297=1|117=clIdE4c]oav3SF7bg\"L|296=1|302=1|311=instrument1psh813x11j3i|309=180387|305=8|10=020|"
 #define TEST_MASS_QUOTE_ACK_LE "baseUni1ds7nwwsj62ob|FIX-API|clIdE4c]oav3SF7bg\"L|instrument1psh813x11j3i"
 
 #define TEST_TRACE_REQUEST "8=FIX.4.2|9=79|35=xr|34=4|49=traceUs18bdsdnueybod|52=20170413-03:25:49.397|56=FIX-API|11=5000|10=201|"
 #define TEST_TRACE_RESPONSE "8=FIX.4.2|9=235|35=xs|49=FIX-API|56=traceUs18bdsdnueybod|34=4|52=20170413-03:25:49.401|11=5000|9100=25704866843180|9101=25704867064367|9102=25704867298900|9103=25704868440546|9104=1492053949399|9105=1492053949400|9106=1492053949400|9107=1492053949401|10=093|"
 #define TEST_TRACE_LE "traceUs18bdsdnueybod|FIX-API|5000|"
-
-#define TEST_FOO = "8=FIX.4.2\001\071=107\001\063\065=A\001\063\064=1\001\064\071=marketmajdxqhk5vldvv\001\065\062=20170721-01:07:41.691\001\065\066=FIX-API\001\071\065=9\001\071\066=P4ssword.\001\071\070=0\001\061\060\070=120\001\061\064\061=Y\001\061\060=161\001"
 
 void push_message(vmars_capture_context_t* ptr, const char* fix_message)
 {
@@ -208,6 +207,14 @@ void should_not_calculate_latency_in_non_new_execution_reports(vmars_capture_con
     assert(msg == NULL);
 }
 
+void should_not_calculate_latency_in_non_new_mass_quote_acks(vmars_capture_context_t* ptr)
+{
+    push_message(ptr, TEST_MASS_QUOTE_ACK_CANCEL);
+
+    const vmars_rb_record_t* msg = vmars_spsc_rb_poll(ptr->rb);
+    assert(msg == NULL);
+}
+
 int main()
 {
     srand(12312312);
@@ -240,4 +247,5 @@ int main()
     parse_split_1_trace_request_with_fragment_less_than_header(&ctx);
     parse_all_msssages(&ctx);
     should_not_calculate_latency_in_non_new_execution_reports(&ctx);
+    should_not_calculate_latency_in_non_new_mass_quote_acks(&ctx);
 }
