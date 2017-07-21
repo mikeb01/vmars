@@ -31,16 +31,6 @@ void vmars_latency_sighandler(int num)
     sigint = 1;
 }
 
-typedef struct
-{
-    int msg_type;
-
-    int64_t tv_sec;
-    int64_t tv_nsec;
-
-    char key[0];
-} latency_record_t;
-
 KHASH_MAP_INIT_STR(latency, latency_record_t*);
 
 static bool is_begin(int type)
@@ -72,7 +62,7 @@ static bool is_complement(int type_a, int type_b)
         case MSG_TYPE_MASS_QUOTE:
             return type_b == MSG_TYPE_MASS_QUOTE_ACK;
         case MSG_TYPE_MASS_QUOTE_ACK:
-            return type_a == MSG_TYPE_MASS_QUOTE;
+            return type_b == MSG_TYPE_MASS_QUOTE;
         case MSG_TYPE_NEW_ORDER_SINGLE:
             return MSG_TYPE_EXECUTION_REPORT;
         case MSG_TYPE_EXECUTION_REPORT:

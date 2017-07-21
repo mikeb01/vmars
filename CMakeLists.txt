@@ -87,7 +87,17 @@ add_executable(
 )
 target_include_directories(fixparser_parse_test PRIVATE src)
 
+add_executable(
+    latency_handler_test
+    test/latency_handler_test.c
+    test/utils.h
+    ${SOURCE} ${HEADERS}
+)
+target_include_directories(latency_handler_test PRIVATE src)
+add_dependencies(latency_handler_test hdr_histogram)
+
 add_test(fix_exctract_fix_messages fix_extract_fix_messages_test)
 add_test(spsc_rb spsc_rb_test)
 add_test(simpleboyermoore simpleboyermoore_test)
 add_test(fixparser_parse fixparser_parse_test)
+add_test(latency_handler_test latency_handler_test)

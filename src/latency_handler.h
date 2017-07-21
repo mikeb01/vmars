@@ -22,6 +22,16 @@ typedef struct
     struct jodie* jodie_server;
 } vmars_latency_handler_context_t;
 
+typedef struct
+{
+    int msg_type;
+
+    int64_t tv_sec;
+    int64_t tv_nsec;
+
+    char key[0];
+} latency_record_t;
+
 void* poll_ring_buffers(void* context);
 
 #endif //PACKET_MMAP_LATENCY_HANDLER_H
