@@ -37,37 +37,61 @@ vmars_fix_message_summary_t* new_summary(int tv_sec, int tv_nsec, vmars_fix_msg_
     return summary;
 }
 
-void verify_latency_recording_on_mass_quotes_in_order(kh_latency_t* latency_table, struct hdr_histogram* histogram)
+int64_t count_latency_recording_for_message_types(
+    kh_latency_t* latency_table, struct hdr_histogram* histogram,
+    vmars_fix_msg_type_t msg_type_a, int tv_nsec_a,
+    vmars_fix_msg_type_t msg_type_b, int tv_nsec_b)
 {
-    vmars_fix_message_summary_t* mass_quote = new_summary(1, 0, MSG_TYPE_MASS_QUOTE, "BROKER04|REUTERS|ORD10001|HPQ");
-    vmars_fix_message_summary_t* mass_quote_ack = new_summary(1, 500000, MSG_TYPE_MASS_QUOTE_ACK, "BROKER04|REUTERS|ORD10001|HPQ");
+    vmars_fix_message_summary_t* msg_a = new_summary(1, tv_nsec_a, msg_type_a, "BROKER04|REUTERS|ORD10001|HPQ");
+    vmars_fix_message_summary_t* msg_b = new_summary(1, tv_nsec_b, msg_type_b, "BROKER04|REUTERS|ORD10001|HPQ");
 
     int64_t old_total_count = histogram->total_count;
 
-    calculate_latency(latency_table, histogram, mass_quote);
-    calculate_latency(latency_table, histogram, mass_quote_ack);
+    calculate_latency(latency_table, histogram, msg_a);
+    calculate_latency(latency_table, histogram, msg_b);
 
-    assert(histogram->total_count == old_total_count + 1);
+    free(msg_a);
+    free(msg_b);
 
-    free(mass_quote);
-    free(mass_quote_ack);
+    return histogram->total_count - old_total_count;
+}
+
+void verify_latency_recording_on_mass_quotes_in_order(kh_latency_t* latency_table, struct hdr_histogram* histogram)
+{
+    assert(1 == count_latency_recording_for_message_types(
+        latency_table, histogram, MSG_TYPE_MASS_QUOTE, 0, MSG_TYPE_MASS_QUOTE_ACK, 500000));
 }
 
 void verify_latency_recording_on_mass_quotes_out_of_order(kh_latency_t* latency_table, struct hdr_histogram* histogram)
 {
-    vmars_fix_message_summary_t* mass_quote = new_summary(1, 0, MSG_TYPE_MASS_QUOTE, "BROKER04|REUTERS|ORD10001|HPQ");
-    vmars_fix_message_summary_t* mass_quote_ack = new_summary(1, 500000, MSG_TYPE_MASS_QUOTE_ACK, "BROKER04|REUTERS|ORD10001|HPQ");
-
-    int64_t old_total_count = histogram->total_count;
-
-    calculate_latency(latency_table, histogram, mass_quote_ack);
-    calculate_latency(latency_table, histogram, mass_quote);
-
-    assert(histogram->total_count == old_total_count + 1);
-
-    free(mass_quote);
-    free(mass_quote_ack);
+    assert(1 == count_latency_recording_for_message_types(
+        latency_table, histogram, MSG_TYPE_MASS_QUOTE_ACK, 500000, MSG_TYPE_MASS_QUOTE, 0));
 }
+
+void verify_latency_recording_on_single_order_in_order(kh_latency_t* latency_table, struct hdr_histogram* histogram)
+{
+    assert(1 == count_latency_recording_for_message_types(
+        latency_table, histogram, MSG_TYPE_NEW_ORDER_SINGLE, 0, MSG_TYPE_EXECUTION_REPORT, 500000));
+}
+
+void verify_latency_recording_on_single_order_out_of_order(kh_latency_t* latency_table, struct hdr_histogram* histogram)
+{
+    assert(1 == count_latency_recording_for_message_types(
+        latency_table, histogram, MSG_TYPE_EXECUTION_REPORT, 500000, MSG_TYPE_NEW_ORDER_SINGLE, 0));
+}
+
+void verify_latency_recording_on_trace_in_order(kh_latency_t* latency_table, struct hdr_histogram* histogram)
+{
+    assert(1 == count_latency_recording_for_message_types(
+        latency_table, histogram, MSG_TYPE_TRACE_REQ, 0, MSG_TYPE_TRACE_RSP, 500000));
+}
+
+void verify_latency_recording_on_trace_out_of_order(kh_latency_t* latency_table, struct hdr_histogram* histogram)
+{
+    assert(1 == count_latency_recording_for_message_types(
+        latency_table, histogram, MSG_TYPE_TRACE_RSP, 500000, MSG_TYPE_TRACE_REQ, 0));
+}
+
 
 int main(int argc, char** argv)
 {
@@ -77,6 +101,10 @@ int main(int argc, char** argv)
 
     verify_latency_recording_on_mass_quotes_in_order(latency_table, histogram);
     verify_latency_recording_on_mass_quotes_out_of_order(latency_table, histogram);
+    verify_latency_recording_on_single_order_in_order(latency_table, histogram);
+    verify_latency_recording_on_single_order_out_of_order(latency_table, histogram);
+    verify_latency_recording_on_trace_in_order(latency_table, histogram);
+    verify_latency_recording_on_trace_out_of_order(latency_table, histogram);
 
     return 0;
 }

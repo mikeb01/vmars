@@ -4,12 +4,9 @@
 #include <time.h>
 #include <signal.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <hdr_histogram.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 
 #include "common.h"
@@ -64,13 +61,13 @@ static bool is_complement(int type_a, int type_b)
         case MSG_TYPE_MASS_QUOTE_ACK:
             return type_b == MSG_TYPE_MASS_QUOTE;
         case MSG_TYPE_NEW_ORDER_SINGLE:
-            return MSG_TYPE_EXECUTION_REPORT;
+            return type_b == MSG_TYPE_EXECUTION_REPORT;
         case MSG_TYPE_EXECUTION_REPORT:
-            return MSG_TYPE_NEW_ORDER_SINGLE;
+            return type_b == MSG_TYPE_NEW_ORDER_SINGLE;
         case MSG_TYPE_TRACE_REQ:
-            return MSG_TYPE_TRACE_RSP;
+            return type_b == MSG_TYPE_TRACE_RSP;
         case MSG_TYPE_TRACE_RSP:
-            return MSG_TYPE_TRACE_REQ;
+            return type_b == MSG_TYPE_TRACE_REQ;
 
         default:
             return false;
