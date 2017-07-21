@@ -18,6 +18,11 @@
 
 #define MAX_FRAGMENT_TOTAL_SIZE 4096
 
+static void atomic_release_increment(int64_t* ptr)
+{
+    __atomic_store_n(ptr, *ptr + 1, __ATOMIC_RELEASE);
+}
+
 typedef struct
 {
     const char* s;
@@ -135,8 +140,35 @@ static void handle_tag(void* context, int fix_tag, const char* fix_value, int le
     }
 }
 
+static void record_message_type_counter(vmars_capture_context_t* ctx, int message_type)
+{
+    switch (message_type)
+    {
+        case MSG_TYPE_NEW_ORDER_SINGLE:
+            atomic_release_increment(&ctx->counters.new_order_single_count);
+            break;
+        case MSG_TYPE_MASS_QUOTE:
+            atomic_release_increment(&ctx->counters.mass_quote_count);
+            break;
+        case MSG_TYPE_TRACE_REQ:
+            atomic_release_increment(&ctx->counters.trace_request_count);
+            break;
+        case MSG_TYPE_EXECUTION_REPORT:
+            atomic_release_increment(&ctx->counters.execution_report_new_count);
+            break;
+        case MSG_TYPE_MASS_QUOTE_ACK:
+            atomic_release_increment(&ctx->counters.mass_quote_ack_count);
+            break;
+        case MSG_TYPE_TRACE_RSP:
+            atomic_release_increment(&ctx->counters.trace_repsonse_count);
+            break;
+        default:
+            break;
+    }
+}
+
 static void process_for_latency_measurement(
-    const vmars_capture_context_t* ctx, uint32_t tv_sec, uint32_t tv_nsec, fix_details_t* fix_details)
+    vmars_capture_context_t* ctx, uint32_t tv_sec, uint32_t tv_nsec, fix_details_t* fix_details)
 {
     bool should_process = false;
     str_t remote_id = { .s = NULL, .len = 0 };
@@ -180,6 +212,8 @@ static void process_for_latency_measurement(
     {
         return;
     }
+
+    record_message_type_counter(ctx, fix_details->message_type);
 
     if (fix_details->symbol.len != 0)
     {
@@ -235,11 +269,6 @@ static void process_for_latency_measurement(
     {
         // TODO: increment counter.
     }
-}
-
-static void atomic_release_increment(int64_t* ptr)
-{
-    __atomic_store_n(ptr, *ptr + 1, __ATOMIC_RELEASE);
 }
 
 static fragment_t* get_fragment(vmars_capture_context_t* ctx, ipv4_stream_t stream_id)

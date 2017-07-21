@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.3)
 enable_testing()
 project(vmars)
 
@@ -59,6 +59,7 @@ add_executable(
 add_dependencies(vmars hdr_histogram)
 
 add_executable(directio src/directio.c)
+add_dependencies(directio hdr_histogram)
 
 #Tests
 add_executable(simpleboyermoore_test src/simpleboyermoore.h src/simpleboyermoore.c test/simpleboyermoore_test.c)

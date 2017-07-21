@@ -63,15 +63,30 @@ void* vmars_poll_counters(void* context)
             aggregate_counters.valid_messages += ctx->counters_vec.counters[i]->valid_messages;
             aggregate_counters.invalid_checksums += ctx->counters_vec.counters[i]->invalid_checksums;
             aggregate_counters.corrupt_messages += ctx->counters_vec.counters[i]->corrupt_messages;
+            aggregate_counters.mass_quote_count += ctx->counters_vec.counters[i]->mass_quote_count;
+            aggregate_counters.mass_quote_ack_count += ctx->counters_vec.counters[i]->mass_quote_ack_count;
+            aggregate_counters.new_order_single_count += ctx->counters_vec.counters[i]->new_order_single_count;
+            aggregate_counters.execution_report_new_count += ctx->counters_vec.counters[i]->execution_report_new_count;
+            aggregate_counters.trace_request_count += ctx->counters_vec.counters[i]->trace_request_count;
+            aggregate_counters.trace_repsonse_count += ctx->counters_vec.counters[i]->trace_repsonse_count;
+
             aggregate_counters.bytes_total += ctx->counters_vec.counters[i]->bytes_total;
 
             gather_socket_stats(ctx->counters_vec.counters[i]->fd, &stats);
         }
 
         const long timestamp = jodie_getMillis();
-        jodie_logGauge(ctx->jodie_server, "vmars.valid_messages", aggregate_counters.valid_messages, timestamp);
-        jodie_logGauge(ctx->jodie_server, "vmars.invalid_checksums", aggregate_counters.valid_messages, timestamp);
-        jodie_logGauge(ctx->jodie_server, "vmars.corrupt_messages", aggregate_counters.valid_messages, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.fix.valid_messages", aggregate_counters.valid_messages, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.fix.invalid_checksums", aggregate_counters.invalid_checksums, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.fix.corrupt_messages", aggregate_counters.corrupt_messages, timestamp);
+
+        jodie_logGauge(ctx->jodie_server, "vmars.fix.mass_quote", aggregate_counters.mass_quote_count, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.fix.mass_quote_ack", aggregate_counters.mass_quote_ack_count, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.fix.new_order_single", aggregate_counters.new_order_single_count, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.fix.execution_report_new", aggregate_counters.execution_report_new_count, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.fix.trace_request", aggregate_counters.trace_request_count, timestamp);
+        jodie_logGauge(ctx->jodie_server, "vmars.fix.trace_response", aggregate_counters.trace_repsonse_count, timestamp);
+
         jodie_logGauge(ctx->jodie_server, "vmars.network.bytes", aggregate_counters.bytes_total, timestamp);
         jodie_logGauge(ctx->jodie_server, "vmars.network.packets", stats.tp_packets, timestamp);
         jodie_logGauge(ctx->jodie_server, "vmars.network.drops", stats.tp_drops, timestamp);

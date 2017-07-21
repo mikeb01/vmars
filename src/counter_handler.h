@@ -13,6 +13,12 @@ typedef struct
     int64_t valid_messages;
     int64_t parsing_errors;
     int64_t bytes_total;
+    int64_t mass_quote_count;
+    int64_t mass_quote_ack_count;
+    int64_t new_order_single_count;
+    int64_t execution_report_new_count;
+    int64_t trace_request_count;
+    int64_t trace_repsonse_count;
 } vmars_monitoring_counters_t;
 
 typedef struct

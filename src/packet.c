@@ -2,12 +2,7 @@
 // Created by barkerm on 1/04/17.
 //
 
-/* Written from scratch, but kernel-to-user space API usage
- * dissected from lolpcap:
- *  Copyright 2011, Chetan Loke <loke.chetan@gmail.com>
- *  License: GPL, version 2.0
- */
-
+// Taken from the example at:
 // https://www.kernel.org/doc/Documentation/networking/packet_mmap.txt
 
 #define _GNU_SOURCE
@@ -90,14 +85,14 @@ static int setup_socket(struct ring* ring, const char* netdev)
     fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (fd < 0)
     {
-        perror("socket");
+        perror("Failed open SOCK_RAW socket");
         return -1;
     }
 
     err = setsockopt(fd, SOL_PACKET, PACKET_VERSION, &v, sizeof(v));
     if (err < 0)
     {
-        perror("setsockopt");
+        perror("Failed to setsockopt to SOL_PACKET.PACKET_VERSION=TPACKET_V3");
         return -1;
     }
 
@@ -112,7 +107,7 @@ static int setup_socket(struct ring* ring, const char* netdev)
     err = setsockopt(fd, SOL_PACKET, PACKET_RX_RING, &ring->req, sizeof(ring->req));
     if (err < 0)
     {
-        perror("setsockopt");
+        perror("Failed to setsockopt to SOL_PACKET.PACKET_RX_RING=...");
         return -1;
     }
 
@@ -120,7 +115,7 @@ static int setup_socket(struct ring* ring, const char* netdev)
         NULL, ring->req.tp_block_size * ring->req.tp_block_nr, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED, fd, 0);
     if (ring->map == MAP_FAILED)
     {
-        perror("mmap");
+        perror("Failed to memory map PF_RING");
         return -1;
     }
 
