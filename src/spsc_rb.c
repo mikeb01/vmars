@@ -30,6 +30,7 @@ static bool is_multiple_of_page_size(size_t value)
 
 static void* map_buffer(size_t length)
 {
+
     // First we need some contiguous virtual memory that is twice the size of the desired memory segment that
     // we want to size.
 
@@ -49,8 +50,8 @@ static void* map_buffer(size_t length)
     // Next we map the real file twice into same block of contigious virtual memory that we
     // previously allocated.
 
-    char* const shm_name = "wibble2";
-    int fd = shm_open(shm_name, O_CREAT | O_EXCL | O_RDWR, 0600);
+    char name[] = "/dev/shm/spsc_rb_XXXXXX";
+    int fd = mkstemp(name);
     if (fd < 0)
     {
         fprintf(stderr, "Failed to create shared memory: %s[%d]\n", strerror(errno), errno);
@@ -82,7 +83,8 @@ static void* map_buffer(size_t length)
     address = first_half_address;
 
     cleanup:
-        shm_unlink(shm_name);
+        close(fd);
+        unlink(name);
 
     return address;
 }
