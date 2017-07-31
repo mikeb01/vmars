@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <hdr_histogram.h>
 #include <netinet/in.h>
+#include <xmmintrin.h>
 
 #include "common.h"
 #include "spsc_rb.h"
@@ -25,6 +26,7 @@ static sig_atomic_t sigint = 0;
 
 void vmars_latency_sighandler(int num)
 {
+    vmars_verbose("[Latency Handler] Closing...\n");
     sigint = 1;
 }
 
@@ -168,7 +170,10 @@ void* poll_ring_buffers(void* context)
                 vmars_spsc_rb_release(rb, record);
             }
         }
+
+        _mm_pause();
     }
 
+    vmars_verbose("[Latency Handler] Done.\n");
     pthread_exit(NULL);
 }
