@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "JodieClient.h"
+#include "jodie_client.h"
 
 
 // expects input as an address in numbers and dots format.

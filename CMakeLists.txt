@@ -38,7 +38,7 @@ set(SOURCE
     src/latency_handler.c
     src/counter_handler.c
     src/common.c
-    src/JodieClient.c)
+    src/jodie_client.c)
 
 set(HEADERS
     src/common.h
@@ -50,7 +50,7 @@ set(HEADERS
     src/latency_handler.h
     src/counter_handler.h
     src/khash.h
-    src/JodieClient.h)
+    src/jodie_client.h)
 
 add_executable(
     vmars

@@ -15,7 +15,7 @@
 #include "counter_handler.h"
 #include "packet.h"
 #include "latency_handler.h"
-#include "JodieClient.h"
+#include "jodie_client.h"
 
 void root_sighandler(int num)
 {

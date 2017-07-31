@@ -17,7 +17,7 @@
 #include "fixparser.h"
 #include "latency_handler.h"
 #include "khash.h"
-#include "JodieClient.h"
+#include "jodie_client.h"
 
 #define MAX_POLLS 20
 

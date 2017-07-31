@@ -15,7 +15,7 @@
 
 #include "common.h"
 #include "counter_handler.h"
-#include "JodieClient.h"
+#include "jodie_client.h"
 
 static sig_atomic_t sigint = 0;
 
