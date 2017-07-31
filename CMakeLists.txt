@@ -37,6 +37,7 @@ set(SOURCE
     src/fix.c
     src/latency_handler.c
     src/counter_handler.c
+    src/common.c
     src/JodieClient.c)
 
 set(HEADERS

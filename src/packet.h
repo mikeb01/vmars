@@ -14,6 +14,7 @@ typedef struct
     struct boyermoore_s* matcher;
     vmars_spsc_rb_t* rb;
     vmars_monitoring_counters_t counters;
+    int cpu_num;
     void* state;
 } vmars_capture_context_t;
 

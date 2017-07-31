@@ -33,7 +33,11 @@ const char* USAGE =
     "Options:\n"
     "  -i  --interface name[,name]     A list of interfaces to probe for messages.\n"
     "                                  E.g. -i eth0,eth1.\n"
-    "  -t  --num-threads num           Number of polling threads per interface.\n"
+    "  -t  --num-threads num           Number of polling threads per interface (default 1).\n"
+    "  -a  --affinity num[,num]        A list of CPUs to use for networking threads.\n"
+    "                                  E.g. -a 0,2.  The CPU assignments match respectively\n"
+    "                                  with list of interfaces.  The first 'num-threads' cores\n"
+    "                                  are assigned to the first interface and so on...\n"
     "  -c  --capture-port num          The port to capture messages on.\n"
     "  -h  --udp-host ip-string        IP address to send latency updates to.\n"
     "  -p  --udp-host num              UDP port to send lantency updates to.\n"
@@ -43,21 +47,28 @@ static struct option long_options[] =
 {
     { "interface", required_argument, NULL, 'i' },
     { "num-threads", required_argument, NULL, 't' },
+    { "affinity", required_argument, NULL, 'a' },
     { "capture-port", required_argument, NULL, 'c' },
     { "udp-host", required_argument, NULL, 'h' },
     { "udp-port", required_argument, NULL, 'p' },
     { 0, 0, 0, 0 }
 };
 
-static vmars_str_vec_t split_interfaces(const char* interfaces)
+static void set_default_config(vmars_config_t* config)
+{
+    memset(config, 0, sizeof(vmars_config_t));
+    config->affinity = "";
+}
+
+static vmars_str_vec_t split_string(const char* s)
 {
     vmars_str_vec_t vec;
 
-    char* dup_ifaces = strdup(interfaces);
+    char* dup_s = strdup(s);
 
     int count = 0;
 
-    char* token = strtok(dup_ifaces, ",");
+    char* token = strtok(dup_s, ",");
     while (NULL != token)
     {
         count++;
@@ -67,12 +78,12 @@ static vmars_str_vec_t split_interfaces(const char* interfaces)
     vec.strings = malloc(count * sizeof(char*));
     vec.len = count;
 
-    free(dup_ifaces);
+    free(dup_s);
 
-    dup_ifaces = strdup(interfaces);
+    dup_s = strdup(s);
 
     int i = 0;
-    token = strtok(dup_ifaces, ",");
+    token = strtok(dup_s, ",");
     while (NULL != token)
     {
         vec.strings[i] = token;
@@ -81,6 +92,20 @@ static vmars_str_vec_t split_interfaces(const char* interfaces)
     }
 
     return vec;
+}
+
+int parse_cpu_id(const char* s)
+{
+    char* endptr = NULL;
+    long int cpu_id = strtol(s, &endptr, 10);
+
+    if (endptr[0] != '\0')
+    {
+        fprintf(stderr, "Skipping affinity setting of: %s\n", s);
+        cpu_id = -1;
+    }
+
+    return (int) cpu_id;
 }
 
 int main(int argc, char** argp)
@@ -92,19 +117,24 @@ int main(int argc, char** argp)
     struct jodie jodie_for_latency;
     struct jodie jodie_for_monitoring;
 
-    memset(&config, 0, sizeof(vmars_config_t));
+    set_default_config(&config);
 
     int option_index = 0;
-    while ((opt = getopt_long(argc, argp, "i:t:c:h:p:", long_options, &option_index)) != -1)
+    while ((opt = getopt_long(argc, argp, "i:t:a:c:h:p:", long_options, &option_index)) != -1)
     {
         switch (opt)
         {
             case 'i':
                 config.interfaces = optarg;
                 break;
+
             case 't':
                 config.num_threads = atoi(optarg);
                 break;
+
+            case 'a':
+                config.affinity = optarg;
+
             case 'c':
                 config.capture_port = atoi(optarg);
                 break;
@@ -154,11 +184,14 @@ int main(int argc, char** argp)
         exit(EXIT_FAILURE);
     }
 
-    printf(
-        "Interfaces: %s, port: %d, num threads: %d, udp host: %s, udp port: %d\n",
-        config.interfaces, config.capture_port, config.num_threads, config.udp_host, config.udp_port);
 
-    const vmars_str_vec_t interfaces = split_interfaces(config.interfaces);
+    vmars_verbose(
+        "Interfaces: %s, port: %d, num threads: %d, affinity: %s, udp host: %s, udp port: %d\n",
+        config.interfaces, config.capture_port, config.num_threads, config.affinity, config.udp_host, config.udp_port);
+
+    const vmars_str_vec_t interfaces = split_string(config.interfaces);
+    const vmars_str_vec_t affinity = split_string(config.affinity);
+
     int total_threads = interfaces.len * config.num_threads;
 
     pthread_t* polling_threads = calloc((size_t) total_threads, sizeof(pthread_t));
@@ -187,11 +220,14 @@ int main(int argc, char** argp)
             int base = j * config.num_threads;
             const int idx = base + i;
 
+            int cpu_id = (i < affinity.len) ? parse_cpu_id(affinity.strings[i]) : -1;
+
             thread_contexts[idx].thread_num = idx;
             thread_contexts[idx].fanout_id = fanout_id * (j + 1);
             thread_contexts[idx].interface = interface;
             thread_contexts[idx].port = config.capture_port;
             thread_contexts[idx].rb = (vmars_spsc_rb_t*) calloc(1, sizeof(vmars_spsc_rb_t));
+            thread_contexts[idx].cpu_num = cpu_id;
 
             if (thread_contexts[idx].rb == NULL)
             {

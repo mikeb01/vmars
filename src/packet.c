@@ -245,9 +245,31 @@ void* vmars_poll_socket(void* context)
     
     vmars_capture_context_t* ctx = (vmars_capture_context_t*) context;
 
-    printf(
-        "[%d] Starting capture thread on interface: %s, fanout id: %d\n",
-        ctx->thread_num, ctx->interface, ctx->fanout_id);
+    ctx->cpu_num;
+
+    vmars_verbose(
+        "[%d] Starting capture thread on interface: %s, fanout id: %d, cpu: %d\n",
+        ctx->thread_num, ctx->interface, ctx->fanout_id, ctx->cpu_num);
+
+    if (-1 < ctx->cpu_num)
+    {
+        pthread_t self = pthread_self();
+        cpu_set_t cpu_set;
+        CPU_ZERO(&cpu_set);
+        CPU_SET(ctx->cpu_num, &cpu_set);
+        int result = pthread_setaffinity_np(self, sizeof(cpu_set_t), &cpu_set);
+        if (result < 0)
+        {
+            fprintf(
+                stderr,
+                "[%d] Failed to set thread affinity to cpu: %d, %s[%d].  Continuing anyway...",
+                ctx->thread_num, ctx->cpu_num, strerror(result), result);
+        }
+        else
+        {
+            vmars_verbose("[%d] Set affinity for thread to CPU: %d\n", ctx->thread_num, ctx->cpu_num);
+        }
+    }
     
     boyermoore_init("8=FIX.4.", &matcher);
     memset(&ring, 0, sizeof(ring));
