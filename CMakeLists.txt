@@ -12,8 +12,8 @@ find_package(Threads)
 
 ExternalProject_Add(
     hdr_histogram
-    URL ${CMAKE_CURRENT_SOURCE_DIR}/lib/HdrHistogram_c-0.9.6.zip
-    URL_MD5 39007a9f2770b7cc485c3e90d36145f7
+    URL ${CMAKE_CURRENT_SOURCE_DIR}/lib/HdrHistogram_c-0.9.7.zip
+    URL_MD5 8a08f0eeb8f4ba0dbc44f4f9559e2386
     INSTALL_COMMAND ""
 )
 
