@@ -73,7 +73,7 @@ void vmars_packet_sighandler(int num)
 }
 #pragma clang diagnostic pop
 
-static int setup_socket(struct ring* ring, const char* netdev)
+static int setup_socket(struct ring* ring, const char* netdev, int use_hw_timestamps)
 {
     int err, i, fd, v = TPACKET_V3;
     struct sockaddr_ll ll;
@@ -144,7 +144,7 @@ static int setup_socket(struct ring* ring, const char* netdev)
     err = setsockopt(fd, SOL_PACKET, PACKET_FANOUT, &ring->fanout_id, sizeof(ring->fanout_id));
     if (err)
     {
-        printf("Failed to set fanout option for socket, interface: %s, error: %s\n", netdev, strerror(errno));
+        fprintf(stderr, "Failed to set fanout option for socket, interface: %s, error: %s\n", netdev, strerror(errno));
         return -1;
     }
 
@@ -155,14 +155,24 @@ static int setup_socket(struct ring* ring, const char* netdev)
     hwtstamp.ifr_data = (void *)&hwconfig;
     hwconfig.rx_filter = HWTSTAMP_FILTER_ALL;
 
-    if (ioctl (fd, SIOCSHWTSTAMP, &hwtstamp) < 0)
+    if (use_hw_timestamps)
     {
-        perror("SIOCGHWTSTAMP failed - not using HW timestamps");
-    }
-    else
-    {
-        int req = SOF_TIMESTAMPING_RAW_HARDWARE;
-        setsockopt(fd, SOL_PACKET, PACKET_TIMESTAMP, (void *) &req, sizeof(req));
+        if (ioctl (fd, SIOCSHWTSTAMP, &hwtstamp) < 0)
+        {
+            perror("SIOCGHWTSTAMP failed - not using HW timestamps");
+        }
+        else
+        {
+            int req = SOF_TIMESTAMPING_RAW_HARDWARE;
+            if (setsockopt(fd, SOL_PACKET, PACKET_TIMESTAMP, (void *) &req, sizeof(req)) < 0)
+            {
+                perror("Unable to setsockopt for hardware timestamping");
+            }
+            else
+            {
+                printf("Hardware timestamps enabled on: %s\n", netdev);
+            }
+        }
     }
 
     return fd;
@@ -276,7 +286,7 @@ void* vmars_poll_socket(void* context)
 
     ring.fanout_id = ctx->fanout_id;
     ctx->matcher = &matcher;
-    fd = setup_socket(&ring, ctx->interface);
+    fd = setup_socket(&ring, ctx->interface, ctx->config->use_hw_timestamps);
     if (fd < 0)
     {
         pthread_exit(NULL);

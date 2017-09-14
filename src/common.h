@@ -19,6 +19,7 @@ typedef struct
     char* interfaces;
     int num_threads;
     char* affinity;
+    int use_hw_timestamps;
 } vmars_config_t;
 
 void vmars_verbose(const char* format, ...);

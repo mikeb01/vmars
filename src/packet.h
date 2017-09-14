@@ -16,6 +16,7 @@ typedef struct
     vmars_monitoring_counters_t counters;
     int cpu_num;
     void* state;
+    vmars_config_t* config;
 } vmars_capture_context_t;
 
 void vmars_packet_sighandler(int num);

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -41,6 +42,8 @@ const char* USAGE =
     "  -c  --capture-port num          The port to capture messages on.\n"
     "  -h  --udp-host ip-string        IP address to send latency updates to.\n"
     "  -p  --udp-host num              UDP port to send lantency updates to.\n"
+    "  -H  --hardware-timestamps       Enable hardware packet timestamps, will fall back to default\n"
+    "                                  if the hardware does not support it.\n"
     "\n";
 
 static struct option long_options[] =
@@ -51,6 +54,7 @@ static struct option long_options[] =
     { "capture-port", required_argument, NULL, 'c' },
     { "udp-host", required_argument, NULL, 'h' },
     { "udp-port", required_argument, NULL, 'p' },
+    { "hardware-timestamps", no_argument, NULL, 'H' },
     { 0, 0, 0, 0 }
 };
 
@@ -120,7 +124,7 @@ int main(int argc, char** argp)
     set_default_config(&config);
 
     int option_index = 0;
-    while ((opt = getopt_long(argc, argp, "i:t:a:c:h:p:", long_options, &option_index)) != -1)
+    while ((opt = getopt_long(argc, argp, "i:t:a:c:h:p:H", long_options, &option_index)) != -1)
     {
         switch (opt)
         {
@@ -145,6 +149,10 @@ int main(int argc, char** argp)
 
             case 'p':
                 config.udp_port = atoi(optarg);
+                break;
+
+            case 'H':
+                config.use_hw_timestamps = 1;
                 break;
 
             default: /* '?' */
@@ -222,6 +230,7 @@ int main(int argc, char** argp)
 
             int cpu_id = (i < affinity.len) ? parse_cpu_id(affinity.strings[i]) : -1;
 
+            thread_contexts[idx].config = &config;
             thread_contexts[idx].thread_num = idx;
             thread_contexts[idx].fanout_id = fanout_id * (j + 1);
             thread_contexts[idx].interface = interface;
