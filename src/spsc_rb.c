@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "spsc_rb.h"
+#include "atomic.h"
 
 static bool is_power_of_two(size_t value)
 {
@@ -131,7 +132,7 @@ vmars_rb_record_t* vmars_spsc_rb_claim(vmars_spsc_rb_t* rb, size_t length)
 
     if ((int32_t) required_capacity > available_capacity)
     {
-        head = __atomic_load_n(&rb->descriptor->head_position, __ATOMIC_SEQ_CST);
+        head = vmars_atomic_load_seq_cst_i64(&rb->descriptor->head_position);
 
         if (required_capacity > (rb->capacity - (size_t)(tail - head)))
         {
@@ -159,7 +160,7 @@ int vmars_spsc_rb_publish(vmars_spsc_rb_t* rb, vmars_rb_record_t* to_publish)
     }
 
     int64_t new_tail = tail + to_publish->length + sizeof(vmars_rb_record_t);
-    __atomic_store_n(&rb->descriptor->tail_position, new_tail, __ATOMIC_SEQ_CST);
+    vmars_atomic_store_seq_cst_i64(&rb->descriptor->tail_position, new_tail);
 
     return 0;
 }
@@ -173,7 +174,7 @@ const vmars_rb_record_t* vmars_spsc_rb_poll(vmars_spsc_rb_t* rb)
 
     if (0 >= tail - head)
     {
-        tail = __atomic_load_n(&rb->descriptor->tail_position, __ATOMIC_SEQ_CST);    
+        tail = vmars_atomic_load_seq_cst_i64(&rb->descriptor->tail_position);
         
         if (0 >= tail - head)
         {
@@ -200,7 +201,7 @@ int vmars_spsc_rb_release(vmars_spsc_rb_t* rb, const vmars_rb_record_t* to_relea
 
     const size_t new_head = head + sizeof(vmars_rb_record_t) + to_release->length;
 
-    __atomic_store_n(&rb->descriptor->head_position, new_head, __ATOMIC_SEQ_CST);
+    vmars_atomic_store_seq_cst_i64(&rb->descriptor->head_position, new_head);
 
     return 0;
 }

@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "atomic.h"
 #include "common.h"
 #include "simpleboyermoore.h"
 #include "fixparser.h"
@@ -20,7 +21,7 @@
 
 static void atomic_release_increment(int64_t* ptr)
 {
-    __atomic_store_n(ptr, *ptr + 1, __ATOMIC_RELEASE);
+    vmars_atomic_store_release_i64(ptr, *ptr + 1);
 }
 
 static int str2int(const char* c, size_t len)

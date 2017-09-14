@@ -29,6 +29,7 @@
 #include <netdb.h>
 #include <errno.h>
 
+#include "atomic.h"
 #include "common.h"
 #include "simpleboyermoore.h"
 #include "spsc_rb.h"
@@ -227,7 +228,7 @@ static void walk_block(vmars_capture_context_t* ctx, struct block_desc* pbd)
     }
 
     int64_t c = ctx->counters.bytes_total;
-    __atomic_store_n(&ctx->counters.bytes_total, c + 1, __ATOMIC_RELEASE);
+    vmars_atomic_store_release_i64(&ctx->counters.bytes_total, c + 1);
 }
 
 static void flush_block(struct block_desc* pbd)
@@ -292,7 +293,7 @@ void* vmars_poll_socket(void* context)
         pthread_exit(NULL);
     }
 
-    __atomic_store_n(&ctx->counters.fd, fd, __ATOMIC_SEQ_CST);
+    vmars_atomic_store_seq_cst_int(&ctx->counters.fd, fd);
 
     memset(&pfd, 0, sizeof(pfd));
     pfd.fd = fd;

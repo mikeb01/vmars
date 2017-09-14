@@ -55,7 +55,7 @@ set(HEADERS
 add_executable(
     vmars
     src/main.c
-    ${SOURCE} ${HEADERS})
+    ${SOURCE} ${HEADERS} src/atomic.h)
 
 add_dependencies(vmars hdr_histogram)
 
