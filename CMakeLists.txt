@@ -41,6 +41,7 @@ set(SOURCE
     src/jodie_client.c)
 
 set(HEADERS
+    src/atomic.h
     src/common.h
     src/packet.h
     src/fixparser.h
@@ -55,7 +56,7 @@ set(HEADERS
 add_executable(
     vmars
     src/main.c
-    ${SOURCE} ${HEADERS} src/atomic.h)
+    ${SOURCE} ${HEADERS})
 
 add_dependencies(vmars hdr_histogram)
 
