@@ -11,12 +11,11 @@ typedef struct
     int fanout_id;
     const char* interface;
     int port;
-    struct boyermoore_s* matcher;
-    vmars_spsc_rb_t* rb;
     vmars_monitoring_counters_t counters;
     int cpu_num;
     void* state;
     vmars_config_t* config;
+    vmars_aeron_ctx aeron_ctx;
 } vmars_capture_context_t;
 
 void vmars_packet_sighandler(int num);

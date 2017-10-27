@@ -31,11 +31,9 @@
 
 #include "atomic.h"
 #include "common.h"
-#include "simpleboyermoore.h"
-#include "spsc_rb.h"
 #include "counter_handler.h"
+#include "aeron_sender.h"
 #include "packet.h"
-#include "fix.h"
 
 #ifndef likely
 # define likely(x)        __builtin_expect(!!(x), 1)
@@ -184,7 +182,7 @@ static void display(vmars_capture_context_t* ctx, struct tpacket3_hdr* ppd)
     struct ethhdr* eth = (struct ethhdr*) ((uint8_t*) ppd + ppd->tp_mac);
     struct iphdr* ip = (struct iphdr*) ((uint8_t*) eth + ETH_HLEN);
 
-    if (eth->h_proto != htons(ETH_P_IP))
+    if (eth->h_proto != htons(ETH_P_IP) || ip->protocol != IPPROTO_TCP)
     {
         return;
     }
@@ -199,17 +197,8 @@ static void display(vmars_capture_context_t* ctx, struct tpacket3_hdr* ppd)
         return;
     }
 
-    int doff = tcp->doff * 4;
-    char* data_ptr = ((char*) tcp + doff);
-    size_t data_len = (size_t) htons(ip->tot_len) - (iphdr_len + doff);
-
-    if (data_len == 0)
-    {
-        return;
-    }
-
-    vmars_extract_fix_messages(
-        ctx, ip->saddr, tcp->source, ip->daddr, tcp->dest, ppd->tp_sec, ppd->tp_nsec, data_ptr, data_len);
+    int32_t ether_frame_length = htons(ip->tot_len) + ETH_HLEN;
+    vmars_aeron_send(ctx->aeron_ctx, (uint8_t*) eth, ether_frame_length);
 }
 
 static void walk_block(vmars_capture_context_t* ctx, struct block_desc* pbd)
@@ -252,8 +241,7 @@ void* vmars_poll_socket(void* context)
     struct pollfd pfd;
     unsigned int block_num = 0, blocks = 64;
     struct block_desc* pbd;
-    struct boyermoore_s matcher;
-    
+
     vmars_capture_context_t* ctx = (vmars_capture_context_t*) context;
 
     ctx->cpu_num;
@@ -282,11 +270,9 @@ void* vmars_poll_socket(void* context)
         }
     }
     
-    boyermoore_init("8=FIX.4.", &matcher);
     memset(&ring, 0, sizeof(ring));
 
     ring.fanout_id = ctx->fanout_id;
-    ctx->matcher = &matcher;
     fd = setup_socket(&ring, ctx->interface, ctx->config->use_hw_timestamps);
     if (fd < 0)
     {
