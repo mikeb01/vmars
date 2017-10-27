@@ -10,6 +10,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <sys/prctl.h>
 
 #include "aeron_sender.h"
 #include "common.h"
@@ -98,6 +99,8 @@ static vmars_str_vec_t split_string(const char* s)
 
 int parse_cpu_id(const char* s)
 {
+    prctl(PR_SET_DUMPABLE, 1);
+
     char* endptr = NULL;
     long int cpu_id = strtol(s, &endptr, 10);
 
@@ -232,12 +235,15 @@ int main(int argc, char** argp)
             thread_contexts[idx].interface = interface;
             thread_contexts[idx].port = config.capture_port;
             thread_contexts[idx].cpu_num = cpu_id;
+            thread_contexts[idx].aeron_ctx = aeron_ctx;
 
             counters_vec.counters[idx] = &thread_contexts[idx].counters;
 
             pthread_create(&polling_threads[idx], NULL, vmars_poll_socket, &thread_contexts[idx]);
         }
     }
+
+    jodie_init(config.udp_host, config.udp_port, &jodie_for_monitoring);
 
     counters_context.counters_vec = counters_vec;
     counters_context.jodie_server = &jodie_for_monitoring;

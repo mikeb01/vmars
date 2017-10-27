@@ -35,7 +35,15 @@ public:
 
     int64_t offer(aeron::AtomicBuffer& message)
     {
-        return m_publication->offer(message);
+        if (m_publication)
+        {
+            return m_publication->offer(message);
+        }
+        else
+        {
+            fprintf(stderr, "publication is null\n");
+            return -1;
+        }
     }
 };
 
