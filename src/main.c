@@ -12,7 +12,7 @@
 #include <netinet/in.h>
 #include <sys/prctl.h>
 
-#include "aeron_sender.h"
+#include "aeron_ringbuffer.h"
 #include "common.h"
 #include "counter_handler.h"
 #include "packet.h"
@@ -191,7 +191,7 @@ int main(int argc, char** argp)
         exit(EXIT_FAILURE);
     }
 
-    vmars_aeron_ctx aeron_ctx = vmars_aeron_setup();
+    vmars_ringbuffer_ctx aeron_ctx = vmars_ringbufer_setup();
 
     vmars_verbose(
         "Interfaces: %s, port: %d, num threads: %d, affinity: %s, udp host: %s, udp port: %d\n",

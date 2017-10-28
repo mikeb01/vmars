@@ -7,7 +7,7 @@
 
 extern "C"
 {
-    #include "aeron_sender.h"
+    #include "aeron_ringbuffer.h"
 }
 
 const int VMARS_AERON_STREAM_ID = 42;
@@ -47,15 +47,20 @@ public:
     }
 };
 
-vmars_aeron_ctx vmars_aeron_setup()
+vmars_ringbuffer_ctx vmars_ringbufer_setup()
 {
     auto* sender = new VmarsAeronCtx{};
-    return reinterpret_cast<vmars_aeron_ctx>(sender);
+    return reinterpret_cast<vmars_ringbuffer_ctx>(sender);
 }
 
 typedef std::array<uint8_t, 16> buffer_t;
 
-int64_t vmars_aeron_send(vmars_aeron_ctx sender, uint32_t tp_sec, uint32_t tp_nsec, uint8_t* buffer, int32_t length)
+int64_t vmars_ringbuffer_send(
+    vmars_ringbuffer_ctx sender,
+    uint32_t tp_sec,
+    uint32_t tp_nsec,
+    uint8_t* buffer,
+    int32_t length)
 {
     auto* ctx = reinterpret_cast<VmarsAeronCtx*>(sender);
     AERON_DECL_ALIGNED(buffer_t timestamp, 16);

@@ -15,7 +15,7 @@ typedef struct
     int cpu_num;
     void* state;
     vmars_config_t* config;
-    vmars_aeron_ctx aeron_ctx;
+    vmars_ringbuffer_ctx aeron_ctx;
 } vmars_capture_context_t;
 
 void vmars_packet_sighandler(int num);

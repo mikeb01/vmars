@@ -32,7 +32,7 @@
 #include "atomic.h"
 #include "common.h"
 #include "counter_handler.h"
-#include "aeron_sender.h"
+#include "aeron_ringbuffer.h"
 #include "packet.h"
 
 #ifndef likely
@@ -198,7 +198,7 @@ static void display(vmars_capture_context_t* ctx, struct tpacket3_hdr* ppd)
     }
 
     int32_t ether_frame_length = htons(ip->tot_len) + ETH_HLEN;
-    vmars_aeron_send(ctx->aeron_ctx, ppd->tp_sec, ppd->tp_nsec, (uint8_t*) eth, ether_frame_length);
+    vmars_ringbuffer_send(ctx->aeron_ctx, ppd->tp_sec, ppd->tp_nsec, (uint8_t*) eth, ether_frame_length);
 }
 
 static void walk_block(vmars_capture_context_t* ctx, struct block_desc* pbd)

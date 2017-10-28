@@ -17,7 +17,7 @@ set(SOURCE
     src/counter_handler.c
     src/common.c
     src/jodie_client.c
-    src/aeron_sender.cpp)
+    src/aeron_ringbuffer.cpp)
 
 set(HEADERS
     src/atomic.h
@@ -25,7 +25,7 @@ set(HEADERS
     src/packet.h
     src/counter_handler.h
     src/jodie_client.h
-    src/aeron_sender.h)
+    src/aeron_ringbuffer.h)
 
 add_executable(
     vmars
