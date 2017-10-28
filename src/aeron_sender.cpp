@@ -33,7 +33,7 @@ public:
         }
     }
 
-    int64_t offer(aeron::AtomicBuffer& message)
+    int64_t offer(std::array<aeron::AtomicBuffer, 2>& message)
     {
         if (m_publication)
         {
@@ -53,12 +53,21 @@ vmars_aeron_ctx vmars_aeron_setup()
     return reinterpret_cast<vmars_aeron_ctx>(sender);
 }
 
-int64_t vmars_aeron_send(vmars_aeron_ctx sender, uint8_t* buffer, int32_t length)
+typedef std::array<uint8_t, 16> buffer_t;
+
+int64_t vmars_aeron_send(vmars_aeron_ctx sender, uint32_t tp_sec, uint32_t tp_nsec, uint8_t* buffer, int32_t length)
 {
     auto* ctx = reinterpret_cast<VmarsAeronCtx*>(sender);
-    aeron::AtomicBuffer data{buffer, length};
+    AERON_DECL_ALIGNED(buffer_t timestamp, 16);
 
-    while (0 > ctx->offer(data))
+    std::array<aeron::AtomicBuffer, 2> dataItems{
+        {{timestamp}, {buffer, length}}
+    };
+
+    dataItems[0].putInt64(0, tp_sec);
+    dataItems[0].putInt64(8, tp_nsec);
+
+    while (0 > ctx->offer(dataItems))
     {
         std::this_thread::yield();
     }

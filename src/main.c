@@ -192,8 +192,6 @@ int main(int argc, char** argp)
     }
 
     vmars_aeron_ctx aeron_ctx = vmars_aeron_setup();
-    const char* foo = "Hello World!";
-    vmars_aeron_send(aeron_ctx, (uint8_t*) foo, (int32_t) strlen(foo));
 
     vmars_verbose(
         "Interfaces: %s, port: %d, num threads: %d, affinity: %s, udp host: %s, udp port: %d\n",
