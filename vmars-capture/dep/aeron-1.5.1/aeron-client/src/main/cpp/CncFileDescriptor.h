@@ -17,9 +17,9 @@
 #ifndef INCLUDED_AERON_CNC_FILE_DESCRIPTOR__
 #define INCLUDED_AERON_CNC_FILE_DESCRIPTOR__
 
-#include <util/Index.h>
-#include <concurrent/AtomicBuffer.h>
-#include <util/MemoryMappedFile.h>
+#include "util/Index.h"
+#include "concurrent/AtomicBuffer.h"
+#include "util/MemoryMappedFile.h"
 
 namespace aeron {
 

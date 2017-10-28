@@ -20,10 +20,10 @@
 #include <iostream>
 #include <array>
 #include <atomic>
-#include <concurrent/AtomicBuffer.h>
-#include <concurrent/logbuffer/BufferClaim.h>
-#include <concurrent/logbuffer/TermAppender.h>
-#include <concurrent/status/UnsafeBufferPosition.h>
+#include "concurrent/AtomicBuffer.h"
+#include "concurrent/logbuffer/BufferClaim.h"
+#include "concurrent/logbuffer/TermAppender.h"
+#include "concurrent/status/UnsafeBufferPosition.h"
 #include "LogBuffers.h"
 
 namespace aeron {

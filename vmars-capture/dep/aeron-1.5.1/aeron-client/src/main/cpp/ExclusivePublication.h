@@ -19,10 +19,10 @@
 
 #include <iostream>
 #include <atomic>
-#include <concurrent/AtomicBuffer.h>
-#include <concurrent/logbuffer/ExclusiveBufferClaim.h>
-#include <concurrent/logbuffer/ExclusiveTermAppender.h>
-#include <concurrent/status/UnsafeBufferPosition.h>
+#include "concurrent/AtomicBuffer.h"
+#include "concurrent/logbuffer/ExclusiveBufferClaim.h"
+#include "concurrent/logbuffer/ExclusiveTermAppender.h"
+#include "concurrent/status/UnsafeBufferPosition.h"
 #include "Publication.h"
 #include "LogBuffers.h"
 

@@ -18,12 +18,12 @@
 #define INCLUDED_AERON_DRIVER_PROXY__
 
 #include <array>
-#include <concurrent/ringbuffer/ManyToOneRingBuffer.h>
-#include <command/PublicationMessageFlyweight.h>
-#include <command/RemoveMessageFlyweight.h>
-#include <command/SubscriptionMessageFlyweight.h>
-#include <command/DestinationMessageFlyweight.h>
-#include <command/ControlProtocolEvents.h>
+#include "concurrent/ringbuffer/ManyToOneRingBuffer.h"
+#include "command/PublicationMessageFlyweight.h"
+#include "command/RemoveMessageFlyweight.h"
+#include "command/SubscriptionMessageFlyweight.h"
+#include "command/DestinationMessageFlyweight.h"
+#include "command/ControlProtocolEvents.h"
 
 namespace aeron {
 
