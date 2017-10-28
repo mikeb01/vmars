@@ -7,7 +7,7 @@
 
 extern "C"
 {
-    #include "aeron_ringbuffer.h"
+    #include "ringbuffer.h"
 }
 
 const int VMARS_AERON_STREAM_ID = 42;

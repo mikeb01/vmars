@@ -12,7 +12,7 @@
 #include <netinet/in.h>
 #include <sys/prctl.h>
 
-#include "aeron_ringbuffer.h"
+#include "ringbuffer.h"
 #include "common.h"
 #include "counter_handler.h"
 #include "packet.h"

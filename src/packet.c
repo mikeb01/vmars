@@ -32,7 +32,7 @@
 #include "atomic.h"
 #include "common.h"
 #include "counter_handler.h"
-#include "aeron_ringbuffer.h"
+#include "ringbuffer.h"
 #include "packet.h"
 
 #ifndef likely
