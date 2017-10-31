@@ -8,8 +8,9 @@ import org.agrona.concurrent.ShutdownSignalBarrier;
 import org.agrona.concurrent.SleepingMillisIdleStrategy;
 
 import java.time.ZonedDateTime;
+import java.util.Base64;
 
-import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.lang.String.format;
 
 public class Main
 {
@@ -28,14 +29,16 @@ public class Main
         {
             System.out.println("Started media driver");
 
-            Thread t = new Thread(Main::pollSubscription);
-            t.setDaemon(true);
-            t.start();
+            Thread t1 = new Thread(Main::pollSubscription);
+            t1.setName("Thing1");
+            t1.setDaemon(true);
+            t1.start();
 
             new ShutdownSignalBarrier().await();
 
-            t.interrupt();
-            t.join();
+            t1.interrupt();
+            t1.join();
+
             System.out.println("Shutdown Driver...");
         }
     }
@@ -50,25 +53,16 @@ public class Main
         try (final Subscription subscription = aeron.addSubscription("aeron:ipc", 42))
         {
             System.out.printf("Created subscription: %d%n", subscription.registrationId());
+            final Base64.Encoder encoder = Base64.getEncoder();
 
             while (!Thread.currentThread().isInterrupted())
             {
                 final int numOfFragments = subscription.poll(
                     (buffer, offset, length, header) ->
                     {
-                        long sec = -1;
-                        long nsec = -1;
-                        if (length > 16)
-                        {
-                            sec = buffer.getLong(offset);
-                            nsec = buffer.getLong(offset + 8);
-                        }
-
-                        System.out.printf(
-                            "[%s] Message - timestamp: %d.%d, offset: %d, limit: %d%n",
-                            ZonedDateTime.now(),
-                            sec, nsec,
-                            offset, length);
+                        byte[] bytes = new byte[length];
+                        buffer.getBytes(offset, bytes);
+                        System.out.printf("[%d]: %s%n", length, encoder.encodeToString(bytes));
                     },
                     10
                 );
