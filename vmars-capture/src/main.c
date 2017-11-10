@@ -191,6 +191,7 @@ int main(int argc, char** argp)
         exit(EXIT_FAILURE);
     }
 
+    vmars_verbose("Connecting to aeron.\n");
     vmars_ringbuffer_ctx aeron_ctx = vmars_ringbufer_setup();
 
     vmars_verbose(

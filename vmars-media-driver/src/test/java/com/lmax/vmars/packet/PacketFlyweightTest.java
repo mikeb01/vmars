@@ -1,4 +1,4 @@
-package com.lmax.vmars;
+package com.lmax.vmars.packet;
 
 import org.agrona.concurrent.UnsafeBuffer;
 import org.junit.Test;
@@ -7,7 +7,7 @@ import java.util.Base64;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertThat;
 
 public class PacketFlyweightTest
 {

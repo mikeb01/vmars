@@ -1,4 +1,4 @@
-package com.lmax.vmars;
+package com.lmax.vmars.packet;
 
 import org.agrona.DirectBuffer;
 
@@ -137,6 +137,6 @@ public class PacketFlyweight
 
     public int tcpSequence()
     {
-        return buffer.getInt(tcpHeaderOffset() + TCP_SEQ_OFFSET, ByteOrder.BIG_ENDIAN);
+        return buffer.getInt(offset + tcpHeaderOffset() + TCP_SEQ_OFFSET, ByteOrder.BIG_ENDIAN);
     }
 }

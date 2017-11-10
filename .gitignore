@@ -1,2 +1,6 @@
 build
 .idea
+vmars-media-driver/.gradle
+vmars-media-driver/vmars-media-driver.ipr
+vmars-media-driver/vmars-media-driver.iws
+vmars-media-driver/vmars-media-driver.iml
