@@ -71,21 +71,6 @@ public class PacketFragmentHandler implements FragmentHandler
         packetHandler.onPacket(context, packetFlyweight, flags);
     }
 
-    private static void debug(PrintStream out, PacketFlyweight packetFlyweight)
-    {
-        out.format("Timestamp: %d.%09d%n", packetFlyweight.timestampSeconds(), packetFlyweight.timestampNanos());
-        out.format("tcpSourcePort: %d, tcpDestPort: %d%n", packetFlyweight.tcpSourcePort(), packetFlyweight.tcpDestPort());
-        out.format("tcpOffset: %d%n", packetFlyweight.tcpHeaderOffset());
-        out.format("tcpSequence: %d%n", packetFlyweight.tcpSequence());
-        out.format("payloadLength: %d%n", packetFlyweight.payloadLength());
-
-        byte[] bytes = new byte[packetFlyweight.payloadLength()];
-        packetFlyweight.buffer().getBytes(packetFlyweight.payloadOffset(), bytes);
-        out.format("Data: %s%n", new String(bytes, US_ASCII));
-
-        out.println("---");
-    }
-
     public static void main(String[] args)
     {
         Aeron.Context ctx = new Aeron.Context()
@@ -94,7 +79,9 @@ public class PacketFragmentHandler implements FragmentHandler
         try (Aeron aeron = Aeron.connect(ctx);
              final Subscription subscription = aeron.addSubscription("aeron:ipc", 42))
         {
-            final PacketFragmentHandler handler = new PacketFragmentHandler((a, b, c) -> {});
+            final PacketFragmentHandler handler = new PacketFragmentHandler(new DuplicateFilterPacketHandler(
+                (stream, packet, flags) -> PacketFlyweight.debug(System.out, packet)
+            ));
 
             while (!Thread.currentThread().isInterrupted())
             {

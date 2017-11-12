@@ -2,9 +2,12 @@ package com.lmax.vmars.packet;
 
 import org.agrona.DirectBuffer;
 
+import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteOrder;
+
+import static java.nio.charset.StandardCharsets.US_ASCII;
 
 public class PacketFlyweight
 {
@@ -138,5 +141,20 @@ public class PacketFlyweight
     public int tcpSequence()
     {
         return buffer.getInt(offset + tcpHeaderOffset() + TCP_SEQ_OFFSET, ByteOrder.BIG_ENDIAN);
+    }
+
+    static void debug(PrintStream out, PacketFlyweight packetFlyweight)
+    {
+        out.format("Timestamp: %d.%09d%n", packetFlyweight.timestampSeconds(), packetFlyweight.timestampNanos());
+        out.format("tcpSourcePort: %d, tcpDestPort: %d%n", packetFlyweight.tcpSourcePort(), packetFlyweight.tcpDestPort());
+        out.format("tcpOffset: %d%n", packetFlyweight.tcpHeaderOffset());
+        out.format("tcpSequence: %d%n", packetFlyweight.tcpSequence());
+        out.format("payloadLength: %d%n", packetFlyweight.payloadLength());
+
+        byte[] bytes = new byte[packetFlyweight.payloadLength()];
+        packetFlyweight.buffer().getBytes(packetFlyweight.payloadOffset(), bytes);
+        out.format("Data: %s%n", new String(bytes, US_ASCII));
+
+        out.println("---");
     }
 }
