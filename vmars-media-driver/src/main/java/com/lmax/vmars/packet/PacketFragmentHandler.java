@@ -15,6 +15,7 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 
 public class PacketFragmentHandler implements FragmentHandler
 {
+    private final PacketHandler packetHandler;
     private final PacketFlyweight packetFlyweight;
     private final Map<StreamId, StreamContext> streams = new HashMap<>();
 
@@ -25,6 +26,7 @@ public class PacketFragmentHandler implements FragmentHandler
 
     PacketFragmentHandler(PacketHandler packetHandler, PacketFlyweight packetFlyweight)
     {
+        this.packetHandler = packetHandler;
         this.packetFlyweight = packetFlyweight;
     }
 
@@ -39,12 +41,14 @@ public class PacketFragmentHandler implements FragmentHandler
 
         StreamContext context = streams.get(streamId);
 
+        int flags;
         if (null == context)
         {
             context = new StreamContext(streamId);
             streams.put(streamId, context);
             context.setSequence(packetFlyweight.tcpSequence(), packetFlyweight.payloadLength());
-            System.out.println("New Stream");
+
+            flags = PacketHandler.NEW_STREAM;
         }
         else
         {
@@ -52,19 +56,19 @@ public class PacketFragmentHandler implements FragmentHandler
             if (0 == seqDiff)
             {
                 context.setSequence(packetFlyweight.tcpSequence(), packetFlyweight.payloadLength());
-                System.out.printf("Sequence match%n");
+                flags = 0;
             }
             else if (seqDiff < 0)
             {
-                System.out.printf("Resend! Expected: %d, found: %d%n", packetFlyweight.tcpSequence(), context.nextExpectedSequence());
+                flags = PacketHandler.RESEND;
             }
             else
             {
-                System.out.printf("Missed packets! Expected: %d, found: %d%n", packetFlyweight.tcpSequence(), context.nextExpectedSequence());
+                flags = PacketHandler.NEW_STREAM | PacketHandler.PACKET_LOSS;
             }
         }
 
-        debug(System.out, packetFlyweight);
+        packetHandler.onPacket(context, packetFlyweight, flags);
     }
 
     private static void debug(PrintStream out, PacketFlyweight packetFlyweight)
@@ -90,7 +94,7 @@ public class PacketFragmentHandler implements FragmentHandler
         try (Aeron aeron = Aeron.connect(ctx);
              final Subscription subscription = aeron.addSubscription("aeron:ipc", 42))
         {
-            final PacketFragmentHandler handler = new PacketFragmentHandler();
+            final PacketFragmentHandler handler = new PacketFragmentHandler((a, b, c) -> {});
 
             while (!Thread.currentThread().isInterrupted())
             {
