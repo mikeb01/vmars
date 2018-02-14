@@ -192,6 +192,7 @@ static void display(vmars_capture_context_t* ctx, struct tpacket3_hdr* ppd)
     uint16_t src_port = ntohs(tcp->source);
     uint16_t dst_port = ntohs(tcp->dest);
 
+    // rc = setsockop(ring->fd, 0, SO_ATTACH_FILTER,
     if (src_port != ctx->port & dst_port != ctx->port)
     {
         return;
